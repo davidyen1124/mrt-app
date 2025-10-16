@@ -37,3 +37,4 @@ This workspace reproduces portions of the Bus+ APK as a Cloudflare Worker + Vite
 - Secrets belong in Wrangler KV/secrets, not in source. `TAIPEI_ETA_BASE` is the current override knob.
 - When switching upstream APIs, update both the Worker env and any dependent documentation.
 - Treat extracted APK assets as read-only IP; do not re-distribute outside the repo without clearance.
+- GitHub Actions deployment uses `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` repository secrets; ensure they exist (token needs Workers Scripts read/write).

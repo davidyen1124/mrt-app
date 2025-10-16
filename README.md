@@ -66,4 +66,11 @@ Add more targeted tests as the UI and API expand. Keep tests deterministic and f
 - Use Conventional Commits where possible (`feat(frontend): add search modal`, etc.).
 - Avoid committing `node_modules`, local `.env` files, or Wrangler state—`.gitignore` is configured accordingly.
 
+## CI/CD
+- GitHub Actions workflow `Deploy to Cloudflare` builds the frontend and runs `npm run deploy` in `worker/` for pushes to `main` or manual triggers.
+- Add the following repository secrets before enabling deployments:
+  - `CLOUDFLARE_ACCOUNT_ID` – Cloudflare account identifier (available in the Workers dashboard).
+  - `CLOUDFLARE_API_TOKEN` – API token with at least the *Account.Workers Scripts:Edit* and *Account.Workers Scripts:Read* permissions.
+- Optional: scope the token to the specific account and restrict IPs if your Cloudflare plan allows.
+
 Questions or future work items? Capture them in the issue tracker of the GitHub remote (`davidyen1124/bus-app-repo`) or inline TODO comments in the relevant modules.
