@@ -5,14 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --local",
+    "dev:assets": "npm --prefix ../frontend run build -- --watch",
+    "dev:full": "npm-run-all --parallel dev:assets dev",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251011.0",
-    "typescript": "^5.4.0",
-    "wrangler": "^3.49.0"
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.43.0"
   },
   "dependencies": {
-    "@cloudflare/kv-asset-handler": "^0.3.0"
+    "@cloudflare/kv-asset-handler": "^0.4.0"
   }
 }
