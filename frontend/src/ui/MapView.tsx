@@ -1,11 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import maplibregl, { LngLatLike } from 'maplibre-gl'
-import type { GeoJSONSource, MapLayerMouseEvent } from 'maplibre-gl'
-import workerScriptUrl from 'maplibre-gl/dist/maplibre-gl-csp-worker.js?url'
-
-if (typeof window !== 'undefined' && typeof maplibregl.setWorkerUrl === 'function') {
-  maplibregl.setWorkerUrl(workerScriptUrl)
-}
+import type { GeoJSONSource, Map as MaplibreMap, MapLayerMouseEvent } from 'maplibre-gl'
 
 type Station = { index: number; id: string; codes: string[]; name_zh?: string } & Record<string, any>
 type StationWithCoords = Station & { lat: number; lng: number }
@@ -55,15 +50,13 @@ export function MapView({
   viewportHeight?: number
 }) {
   const ref = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<maplibregl.Map | null>(null)
+  const mapRef = useRef<MaplibreMap | null>(null)
   const mapReadyRef = useRef(false)
   const stationLookupRef = useRef<Record<string, StationWithCoords>>({})
   const onStationClickRef = useRef(onStationClick)
   const stationsListRef = useRef<StationWithCoords[]>([])
   const stationGeoJsonRef = useRef(stationGeoJsonInitial())
   const bottomOffsetRef = useRef(bottomOffsetPx)
-  const [mapSupported, setMapSupported] = useState<boolean | null>(null)
-  const [mapError, setMapError] = useState<string | null>(null)
 
   useEffect(() => {
     onStationClickRef.current = onStationClick
@@ -75,20 +68,6 @@ export function MapView({
     if (!map || !mapReadyRef.current) return
     map.setPadding(createPadding(bottomOffsetPx))
   }, [bottomOffsetPx])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      const checker = (maplibregl as any).supported
-      if (typeof checker === 'function') {
-        setMapSupported(Boolean(checker({ failIfMajorPerformanceCaveat: true })))
-      } else {
-        setMapSupported(true)
-      }
-    } catch {
-      setMapSupported(false)
-    }
-  }, [])
 
   // Try to infer coordinates from various common shapes
   const stationsWithCoords = useMemo(() => {
@@ -131,7 +110,7 @@ export function MapView({
   }, [stations, coordsById])
 
   const uniqueStations = useMemo(() => {
-    const seen = new Map<string, StationWithCoords>()
+    const seen = new globalThis.Map<string, StationWithCoords>()
     for (const s of stationsWithCoords) {
       if (!seen.has(s.id)) seen.set(s.id, s)
     }
@@ -169,37 +148,21 @@ export function MapView({
 
   // Initialize map once
   useEffect(() => {
-    if (mapSupported !== true) return
     if (mapRef.current) return
     const container = ref.current
     if (!container) return
 
-    let mapInstance: maplibregl.Map | null = null
-    try {
-      setMapError(null)
-      mapInstance = new maplibregl.Map({
-        container,
-        style: styleUrl,
-        center: [121.5654, 25.033] as LngLatLike, // Taipei City Hall approx
-        zoom: 11,
-        scrollZoom: true,
-        dragPan: true,
-        pitchWithRotate: false,
-        dragRotate: false,
-        canvasContextAttributes: {
-          // Request WebGL1 explicitly and allow the platform to fall back when needed.
-          contextType: 'webgl',
-          antialias: true,
-          failIfMajorPerformanceCaveat: false,
-          powerPreference: 'high-performance'
-        }
-      })
-    } catch (error) {
-      console.error('MapLibre map failed to initialize', error)
-      setMapError(error instanceof Error ? error.message : 'Unable to initialize map')
-      return
-    }
-    if (!mapInstance) return
+    const mapInstance = new maplibregl.Map({
+      container,
+      style: styleUrl,
+      center: [121.5654, 25.033] as LngLatLike, // Taipei City Hall approx
+      zoom: 11,
+      attributionControl: true,
+      scrollZoom: true,
+      dragPan: true,
+      pitchWithRotate: false,
+      dragRotate: false
+    })
     mapRef.current = mapInstance
     mapInstance.dragRotate.disable()
     if (mapInstance.touchZoomRotate && mapInstance.touchZoomRotate.disableRotation) {
@@ -208,11 +171,11 @@ export function MapView({
 
     // Controls: nav + geolocate at top-right (avoid bottom sheet overlap)
     mapInstance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
-    const geolocate = new maplibregl.GeolocateControl({
-      positionOptions: { enableHighAccuracy: true },
-      trackUserLocation: true,
-      showAccuracyCircle: false
-    })
+  const geolocate = new maplibregl.GeolocateControl({
+    positionOptions: { enableHighAccuracy: true },
+    trackUserLocation: true,
+    showAccuracyCircle: false
+  })
     mapInstance.addControl(geolocate, 'top-right')
     requestAnimationFrame(() => {
       if (mapReadyRef.current && mapRef.current) mapRef.current.resize()
@@ -300,7 +263,7 @@ export function MapView({
       mapInstance.remove()
       mapRef.current = null
     }
-  }, [styleUrl, mapSupported])
+  }, [styleUrl])
 
   useEffect(() => {
     if (typeof ResizeObserver === 'undefined') return
@@ -358,17 +321,6 @@ export function MapView({
     if (!map || !mapReadyRef.current) return
     map.resize()
   }, [viewportHeight])
-
-  if (mapSupported === false || mapError) {
-    return (
-      <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 text-center p-4 text-sm text-gray-600">
-        <p className="max-w-xs">
-          無法顯示互動地圖。請啟用 WebGL 2 或改用支援 WebGL 的瀏覽器，以繼續查看捷運資訊。
-        </p>
-        {mapError ? <p className="mt-2 text-xs text-gray-500">{mapError}</p> : null}
-      </div>
-    )
-  }
 
   return <div ref={ref} className="absolute inset-0" />
 }
