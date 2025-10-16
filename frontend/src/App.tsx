@@ -8,30 +8,10 @@ async function fetchStations(): Promise<Line[]> {
   try {
     const r = await fetch('/api/mrt/taipei/stations')
     const data = await r.json()
-    const rawLines = Array.isArray(data?.lines) ? data.lines : []
-    return rawLines
-      .map((line: any) => {
-        if (!line || !Array.isArray(line.stations)) return null
-        const stations: Station[] = line.stations
-          .map((station: any) => {
-            if (!station || typeof station.id !== 'string') return null
-            const codes = Array.isArray(station.codes)
-              ? station.codes.filter((code: unknown): code is string => typeof code === 'string')
-              : []
-            const lat = typeof station.lat === 'number' ? station.lat : undefined
-            const lng = typeof station.lng === 'number' ? station.lng : undefined
-            const index = typeof station.index === 'number' ? station.index : undefined
-            const nameZh = typeof station.name_zh === 'string' ? station.name_zh : undefined
-            return { id: station.id, codes, lat, lng, index, name_zh: nameZh }
-          })
-          .filter((station: Station | null): station is Station => Boolean(station))
-        return {
-          stations,
-          ...(typeof line.line_index === 'number' ? { line_index: line.line_index } : {}),
-          ...(typeof line.line_code === 'string' ? { line_code: line.line_code } : {})
-        }
-      })
-      .filter((line: any): line is Line => Boolean(line))
+    if (Array.isArray(data?.lines)) {
+      return data.lines as Line[]
+    }
+    return []
   } catch {
     return []
   }

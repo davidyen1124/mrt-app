@@ -86,7 +86,66 @@ async function handleApi(req: Request, env: Env): Promise<Response> {
 
   if (pathname === '/api/mrt/taipei/stations') {
     const dataModule = await import('../../data/taipei_stations_combined.json')
-    return jsonResponse(unwrapJsonModule(dataModule))
+    const rawData = unwrapJsonModule(dataModule)
+
+    const normalizeStringArray = (value: unknown): string[] => {
+      if (!Array.isArray(value)) return []
+      return value.filter((item): item is string => typeof item === 'string')
+    }
+
+    const normalizeStation = (value: unknown) => {
+      if (!isRecord(value)) return null
+      const id = value.id
+      if (typeof id !== 'string') return null
+
+      const station: Record<string, unknown> = {
+        id,
+        codes: normalizeStringArray(value.codes)
+      }
+
+      const numericKeys = ['lat', 'lng', 'index'] as const
+      for (const key of numericKeys) {
+        const candidate = value[key]
+        if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+          station[key] = candidate
+        }
+      }
+
+      if (typeof value.name_zh === 'string') {
+        station.name_zh = value.name_zh
+      }
+
+      return station
+    }
+
+    const normalizeLine = (value: unknown) => {
+      if (!isRecord(value)) return null
+      const rawStations = value.stations
+      if (!Array.isArray(rawStations)) return null
+
+      const stations = rawStations
+        .map(normalizeStation)
+        .filter((station): station is Record<string, unknown> => Boolean(station))
+
+      const line: Record<string, unknown> = { stations }
+
+      if (typeof value.line_index === 'number' && Number.isFinite(value.line_index)) {
+        line.line_index = value.line_index
+      }
+
+      if (typeof value.line_code === 'string') {
+        line.line_code = value.line_code
+      }
+
+      return line
+    }
+
+    const rawLines = isRecord(rawData) && Array.isArray(rawData.lines) ? rawData.lines : []
+    const lines = rawLines
+      .map(normalizeLine)
+      .filter((line): line is Record<string, unknown> => Boolean(line))
+
+    return jsonResponse({ lines })
   }
 
   if (pathname === '/api/mrt/taipei/eta') {
