@@ -12,25 +12,28 @@ export default function StationSearchResults({
   emptyLabel
 }: StationSearchResultsProps) {
   if (!stations.length) {
-    return <div className="py-6 text-center text-gray-500 text-sm">{emptyLabel}</div>
+    return (
+      <div className="border rounded-lg p-3">
+        <div className="py-6 text-center text-gray-500 text-sm">{emptyLabel}</div>
+      </div>
+    )
   }
 
   return (
-    <ul className="divide-y">
-      {stations.map((station, index) => (
-        <li key={`${station.id}-${index}`}>
-          <button
-            type="button"
-            className="w-full py-2 flex items-center justify-between text-left"
-            onClick={() => onSelect(station)}
-          >
-            <div>
-              <div className="text-base">{station.name_zh}</div>
-            </div>
-            <div className="text-sm text-blue-600 whitespace-nowrap">查看</div>
-          </button>
-        </li>
-      ))}
-    </ul>
+    <div className="border rounded-lg p-3">
+      <ul className="divide-y">
+        {stations.map((station, index) => (
+          <li key={`${station.id}-${index}`}>
+            <button
+              type="button"
+              className="w-full py-2 flex items-center text-left"
+              onClick={() => onSelect(station)}
+            >
+              <span className="text-sm truncate">{station.name_zh}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
