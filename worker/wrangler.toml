@@ -1,0 +1,13 @@
+name = "mrt-app"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Serve the Vite build output from frontend/dist using Workers Assets
+[assets]
+directory = "../frontend/dist"
+binding = "__STATIC_CONTENT"
+
+[vars]
+# Upstream endpoint for Taipei ETA (can be replaced with TDX/TRTC later)
+TAIPEI_ETA_BASE = "https://apis.bus-plus.tw/v2/mrt/taipei/eta?stationId="
+
