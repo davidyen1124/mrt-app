@@ -44,6 +44,7 @@ The upstream base URL is defined in `worker/wrangler.toml` as `TAIPEI_ETA_BASE`.
   - `npm run preview` – serves the production build for local smoke checks.
 - Worker:
   - `npm run dev` – local Worker with static assets from `frontend/dist`.
+  - `npm run dev:full` – runs the Worker while rebuilding `frontend/dist` on change.
   - `npm run deploy` – publishes to Cloudflare (requires authenticated Wrangler session).
 
 Rebuild the frontend after dataset or UI changes so the Worker serves fresh assets.
