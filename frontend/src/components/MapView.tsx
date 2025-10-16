@@ -1,9 +1,13 @@
 import type { Station } from '@/types/station'
+import type { Feature, FeatureCollection, Point } from 'geojson'
 import type { GeoJSONSource, MapLayerMouseEvent, Map as MaplibreMap } from 'maplibre-gl'
 import maplibregl, { LngLatLike } from 'maplibre-gl'
 import { useEffect, useMemo, useRef } from 'react'
 
 type StationWithCoords = Station & { lat: number; lng: number }
+type StationFeatureProperties = { id: string; title: string; codes: string[] }
+type StationFeature = Feature<Point, StationFeatureProperties>
+type StationFeatureCollection = FeatureCollection<Point, StationFeatureProperties>
 
 const STATION_SOURCE_ID = 'station-points'
 const STATION_LAYER_ID = 'station-circles'
@@ -21,14 +25,13 @@ const createPadding = (bottom: number) => ({
   bottom: Math.max(0, bottom) + DEFAULT_PADDING.extraBottom
 })
 
-function stationGeoJsonInitial() {
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+function stationGeoJsonInitial(): StationFeatureCollection {
   return {
-    type: 'FeatureCollection' as const,
-    features: [] as {
-      type: 'Feature'
-      geometry: { type: 'Point'; coordinates: [number, number] }
-      properties: { id: string; title: string; codes: string[] }
-    }[]
+    type: 'FeatureCollection',
+    features: []
   }
 }
 
@@ -71,37 +74,61 @@ export function MapView({
 
   const stationsWithCoords = useMemo(() => {
     const out: StationWithCoords[] = []
-    const asNum = (v: any) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+    const asNum = (value: unknown) =>
+      typeof value === 'number' && Number.isFinite(value) ? value : null
     const swapIfNeeded = (a: number, b: number) =>
       a > 60 && b < 60 ? { lat: b, lng: a } : { lat: a, lng: b }
 
-    for (const s of stations || []) {
-      if (coordsById && coordsById[s.id] && typeof coordsById[s.id].lat === 'number') {
-        const { lat, lng } = coordsById[s.id]
-        out.push({ ...s, lat, lng })
+    for (const station of stations) {
+      const providedCoords = coordsById?.[station.id]
+      const lookupLat = asNum(providedCoords?.lat)
+      const lookupLng = asNum(providedCoords?.lng)
+      if (lookupLat != null && lookupLng != null) {
+        out.push({ ...station, lat: lookupLat, lng: lookupLng })
         continue
       }
+
       let lat: number | null = null
       let lng: number | null = null
-      if (asNum((s as any).lat) && asNum((s as any).lng)) {
-        lat = asNum((s as any).lat)
-        lng = asNum((s as any).lng)
-      } else if (asNum((s as any).latitude) && asNum((s as any).longitude)) {
-        lat = asNum((s as any).latitude)
-        lng = asNum((s as any).longitude)
-      } else if (Array.isArray((s as any).location) && (s as any).location.length >= 2) {
-        const a = asNum((s as any).location[0])
-        const b = asNum((s as any).location[1])
-        if (a != null && b != null) {
-          const sw = swapIfNeeded(a, b)
-          lat = sw.lat
-          lng = sw.lng
+
+      const directLat = asNum(station.lat)
+      const directLng = asNum(station.lng)
+      if (directLat != null && directLng != null) {
+        lat = directLat
+        lng = directLng
+      } else {
+        const altLat = asNum(station['latitude'])
+        const altLng = asNum(station['longitude'])
+        if (altLat != null && altLng != null) {
+          lat = altLat
+          lng = altLng
+        } else {
+          const location = station['location']
+          if (Array.isArray(location) && location.length >= 2) {
+            const first = asNum(location[0])
+            const second = asNum(location[1])
+            if (first != null && second != null) {
+              const swapped = swapIfNeeded(first, second)
+              lat = swapped.lat
+              lng = swapped.lng
+            }
+          } else {
+            const position = station['position']
+            if (isRecord(position)) {
+              const posLat = asNum(position.lat)
+              const posLng = asNum(position.lng)
+              if (posLat != null && posLng != null) {
+                lat = posLat
+                lng = posLng
+              }
+            }
+          }
         }
-      } else if ((s as any).position && asNum((s as any).position.lat) && asNum((s as any).position.lng)) {
-        lat = asNum((s as any).position.lat)
-        lng = asNum((s as any).position.lng)
       }
-      if (lat != null && lng != null) out.push({ ...s, lat, lng })
+
+      if (lat != null && lng != null) {
+        out.push({ ...station, lat, lng })
+      }
     }
     return out
   }, [stations, coordsById])
@@ -127,20 +154,20 @@ export function MapView({
 
   const stationGeoJson = useMemo(() => {
     return {
-      type: 'FeatureCollection' as const,
-      features: uniqueStations.map((s) => ({
-        type: 'Feature' as const,
+      type: 'FeatureCollection',
+      features: uniqueStations.map<StationFeature>(station => ({
+        type: 'Feature',
         geometry: {
-          type: 'Point' as const,
-          coordinates: [s.lng, s.lat] as [number, number]
+          type: 'Point',
+          coordinates: [station.lng, station.lat]
         },
         properties: {
-          id: s.id,
-          title: s.name_zh ?? '',
-          codes: s.codes ?? []
+          id: station.id,
+          title: station.name_zh ?? '',
+          codes: station.codes ?? []
         }
       }))
-    }
+    } satisfies StationFeatureCollection
   }, [uniqueStations])
 
   useEffect(() => {
@@ -177,8 +204,8 @@ export function MapView({
       else mapInstance.resize()
     })
 
-    geolocate.on('geolocate', (e: any) => {
-      const { latitude: lat, longitude: lng } = e.coords || {}
+    geolocate.on('geolocate', (position: GeolocationPosition) => {
+      const { latitude: lat, longitude: lng } = position.coords
       if (typeof lat !== 'number' || typeof lng !== 'number') return
       const currentStations = stationsListRef.current
       if (currentStations.length) {
@@ -267,7 +294,7 @@ export function MapView({
     const map = mapRef.current
     if (!map || !mapReadyRef.current) return
     const source = map.getSource(STATION_SOURCE_ID) as GeoJSONSource | undefined
-    if (source) source.setData(stationGeoJson as any)
+    if (source) source.setData(stationGeoJson)
   }, [stationGeoJson])
 
   useEffect(() => {

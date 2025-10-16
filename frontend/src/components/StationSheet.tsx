@@ -1,10 +1,10 @@
-import type { Station } from '@/types/station'
 import EtaPanel from '@/components/EtaPanel'
 import SheetHandle from '@/components/SheetHandle'
 import StationSearchInput from '@/components/StationSearchInput'
 import StationSearchResults from '@/components/StationSearchResults'
+import type { Station } from '@/types/station'
 
-export type PanelState = 'idle' | 'search' | 'station'
+export type SheetMode = 'idle' | 'search' | 'station'
 
 type StationSheetProps = {
   expanded: boolean
@@ -12,7 +12,7 @@ type StationSheetProps = {
   query: string
   onQueryChange: (value: string) => void
   onClearQuery: () => void
-  panelState: PanelState
+  mode: SheetMode
   selected: Station | null
   results: Station[]
   onStationSelect: (station: Station) => void
@@ -25,7 +25,7 @@ export default function StationSheet({
   query,
   onQueryChange,
   onClearQuery,
-  panelState,
+  mode,
   selected,
   results,
   onStationSelect,
@@ -51,8 +51,8 @@ export default function StationSheet({
           />
           {expanded && (
             <div className="flex-1 overflow-y-auto">
-              {panelState === 'station' && selected && <EtaPanel station={selected} />}
-              {panelState === 'search' && (
+              {mode === 'station' && selected && <EtaPanel station={selected} />}
+              {mode === 'search' && (
                 <StationSearchResults
                   stations={results}
                   onSelect={onStationSelect}

@@ -1,22 +1,114 @@
-import { useEffect, useReducer, useState } from 'react'
 import type { Station } from '@/types/station'
+import { useEffect, useReducer, useState } from 'react'
+
+type LocalizedText = string | Record<string, string | null | undefined>
 
 type EtaItem = {
-  routeName?: any
+  routeName?: LocalizedText
+  stationName?: LocalizedText
+  destinationStationName?: LocalizedText
   destinationStationId?: string
-  stationName?: any
-  estimateTime?: number
-  arriveAt?: number
+  etaLabel?: string
+  estimateTime?: string | number
+  arriveAt: number | null
 }
-
-type EnrichedEtaItem = EtaItem & { arriveAt: number | null }
 
 type EtaPanelProps = {
   station: Station
 }
 
-const renderEta = (item: EnrichedEtaItem) => {
-  if (item.arriveAt == null) return (item as any)?.etaLabel ?? (item as any)?.estimateTime ?? '-'
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const isLocalizedMap = (value: unknown): value is Record<string, string | null | undefined> =>
+  isRecord(value) && Object.values(value).every(entry => entry == null || typeof entry === 'string')
+
+const toLocalizedText = (value: unknown): LocalizedText | undefined => {
+  if (typeof value === 'string') return value
+  if (isLocalizedMap(value)) return value
+  return undefined
+}
+
+const extractEtaEntries = (value: unknown): unknown[] => {
+  if (Array.isArray(value)) {
+    return value
+  }
+  if (isRecord(value)) {
+    const candidateKeys = ['items', 'result'] as const
+    for (const key of candidateKeys) {
+      if (key in value) {
+        const nested = extractEtaEntries(value[key])
+        if (nested.length > 0) return nested
+      }
+    }
+  }
+  return []
+}
+
+const toEtaItem = (entry: unknown): EtaItem | null => {
+  if (!isRecord(entry)) return null
+
+  const normalizeTimestamp = (value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+    if (typeof value === 'string') {
+      const parsed = Number.parseInt(value, 10)
+      return Number.isFinite(parsed) ? parsed : null
+    }
+    return null
+  }
+
+  const normalizeEstimateTime = (value: unknown): string | number | undefined => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (trimmed) return trimmed
+    }
+    return undefined
+  }
+
+  const normalizeId = (value: unknown): string | undefined => {
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      return trimmed ? trimmed : undefined
+    }
+    return undefined
+  }
+
+  return {
+    routeName: toLocalizedText(entry.routeName),
+    stationName: toLocalizedText(entry.stationName),
+    destinationStationName: toLocalizedText(entry.destinationStationName),
+    destinationStationId: normalizeId(entry.destinationStationId),
+    etaLabel: typeof entry.etaLabel === 'string' ? entry.etaLabel : undefined,
+    estimateTime: normalizeEstimateTime(entry.estimateTime),
+    arriveAt: normalizeTimestamp(entry.arriveAt)
+  }
+}
+
+const toEtaItems = (value: unknown): EtaItem[] =>
+  extractEtaEntries(value).reduce<EtaItem[]>((acc, entry) => {
+    const normalized = toEtaItem(entry)
+    if (normalized) acc.push(normalized)
+    return acc
+  }, [])
+
+const resolveLabel = (value?: LocalizedText): string | undefined => {
+  if (!value) return undefined
+  if (typeof value === 'string') return value
+  const zh = value.zh
+  if (typeof zh === 'string' && zh.trim()) return zh.trim()
+  for (const label of Object.values(value)) {
+    if (typeof label === 'string' && label.trim()) return label.trim()
+  }
+  return undefined
+}
+
+const renderEta = (item: EtaItem) => {
+  if (item.arriveAt == null) {
+    if (item.etaLabel && item.etaLabel.trim()) return item.etaLabel.trim()
+    if (item.estimateTime != null) return String(item.estimateTime)
+    return '-'
+  }
   const remaining = Math.max(0, Math.round((item.arriveAt - Date.now()) / 1000))
   if (remaining === 0) return '進站中'
   const minutes = Math.floor(remaining / 60)
@@ -25,7 +117,7 @@ const renderEta = (item: EnrichedEtaItem) => {
 }
 
 export default function EtaPanel({ station }: EtaPanelProps) {
-  const [items, setItems] = useState<EnrichedEtaItem[]>([])
+  const [items, setItems] = useState<EtaItem[]>([])
   const [, forceRender] = useReducer((tick: number) => tick + 1, 0)
 
   useEffect(() => {
@@ -34,20 +126,10 @@ export default function EtaPanel({ station }: EtaPanelProps) {
     const load = async () => {
       try {
         const response = await fetch(`/api/mrt/taipei/eta?stationId=${encodeURIComponent(station.id)}`)
-        const raw = await response.json()
-        const data: EtaItem[] = Array.isArray(raw)
-          ? raw
-          : Array.isArray((raw as any)?.items)
-          ? (raw as any).items
-          : Array.isArray((raw as any)?.result)
-          ? (raw as any).result
-          : []
+        const raw: unknown = await response.json()
+        const data = toEtaItems(raw)
         if (cancelled) return
-        const enriched: EnrichedEtaItem[] = (data || []).map((item: any) => ({
-          ...item,
-          arriveAt: Number.isFinite(item?.arriveAt) ? Number(item.arriveAt) : null
-        }))
-        setItems(enriched)
+        setItems(data)
       } catch {
         if (!cancelled) setItems([])
       }
@@ -71,12 +153,12 @@ export default function EtaPanel({ station }: EtaPanelProps) {
         {items.map((item, index) => (
           <li key={index} className="py-2 flex items-center justify-between">
             <div className="text-sm truncate">
-              {(item as any)?.routeName?.zh || (item as any)?.routeName || '路線'}
+              {resolveLabel(item.routeName) ?? '路線'}
               <span className="mx-1">→</span>
-              {((item as any)?.stationName?.zh ||
-                (item as any)?.stationName ||
-                (item as any)?.destinationStationName?.zh ||
-                item.destinationStationId) as any}
+              {resolveLabel(item.stationName) ??
+                resolveLabel(item.destinationStationName) ??
+                item.destinationStationId ??
+                ''}
             </div>
             <div className="text-sm font-medium whitespace-nowrap">{renderEta(item)}</div>
           </li>

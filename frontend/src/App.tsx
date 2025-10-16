@@ -1,5 +1,5 @@
 import MapView from '@/components/MapView'
-import StationSheet, { type PanelState } from '@/components/StationSheet'
+import StationSheet, { type SheetMode } from '@/components/StationSheet'
 import type { Line } from '@/types/line'
 import type { Station } from '@/types/station'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -34,11 +34,11 @@ export default function App() {
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<Station | null>(null)
   const [coordsById, setCoordsById] = useState<Record<string, { lat: number; lng: number }>>({})
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [sheetMode, setSheetMode] = useState<SheetMode>('idle')
   const [viewportHeight, setViewportHeight] = useState(() =>
     typeof window === 'undefined' ? 720 : window.innerHeight
   )
-  const isSearching = query.trim().length > 0
+  const hasQuery = query.trim().length > 0
   const filtered = useMemo(() => {
     const normalize = (str: string) =>
       (str || '')
@@ -79,29 +79,45 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const shouldExpand = Boolean(selected || isSearching)
-    setIsExpanded(shouldExpand)
-  }, [selected, isSearching])
-
-  useEffect(() => {
-    if (isSearching && selected) {
-      setSelected(null)
+    if (sheetMode === 'station' && !selected) {
+      setSheetMode(hasQuery ? 'search' : 'idle')
     }
-  }, [isSearching, selected])
+  }, [selected, sheetMode, hasQuery])
+
+  const handleQueryChange = useCallback(
+    (value: string) => {
+      setQuery(value)
+      const trimmed = value.trim()
+      if (trimmed) {
+        setSheetMode('search')
+      } else if (selected) {
+        setSheetMode('station')
+      } else {
+        setSheetMode('idle')
+      }
+    },
+    [selected]
+  )
+
+  const handleClearQuery = useCallback(() => {
+    handleQueryChange('')
+  }, [handleQueryChange])
 
   const handleStationSelect = useCallback((station: Station) => {
     setSelected(station)
     setQuery('')
+    setSheetMode('station')
   }, [])
 
+  const isExpanded = sheetMode !== 'idle'
+
   const handleToggleSheet = useCallback(() => {
-    if (!isExpanded) return
+    if (sheetMode === 'idle') return
     setSelected(null)
     setQuery('')
-    setIsExpanded(false)
-  }, [isExpanded])
+    setSheetMode('idle')
+  }, [sheetMode])
 
-  const panelState: PanelState = selected ? 'station' : isSearching ? 'search' : 'idle'
   const expandedBaseHeight = Math.round(Math.max(320, Math.min(600, viewportHeight * 0.5)))
   const compactBaseHeight = 92
   const sheetHeightPx = isExpanded ? expandedBaseHeight : compactBaseHeight
@@ -122,9 +138,9 @@ export default function App() {
           expanded={isExpanded}
           sheetHeightPx={sheetHeightPx}
           query={query}
-          onQueryChange={setQuery}
-          onClearQuery={() => setQuery('')}
-          panelState={panelState}
+          onQueryChange={handleQueryChange}
+          onClearQuery={handleClearQuery}
+          mode={sheetMode}
           selected={selected}
           results={filtered}
           onStationSelect={handleStationSelect}
