@@ -1,5 +1,6 @@
+import { useNow } from '@/hooks/useNow'
 import type { Station } from '@/types/station'
-import { useEffect, useReducer, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type LocalizedText = string | Record<string, string | null | undefined>
 
@@ -103,13 +104,13 @@ const resolveLabel = (value?: LocalizedText): string | undefined => {
   return undefined
 }
 
-const renderEta = (item: EtaItem) => {
+const renderEta = (item: EtaItem, now: number) => {
   if (item.arriveAt == null) {
     if (item.etaLabel && item.etaLabel.trim()) return item.etaLabel.trim()
     if (item.estimateTime != null) return String(item.estimateTime)
     return '-'
   }
-  const remaining = Math.max(0, Math.round((item.arriveAt - Date.now()) / 1000))
+  const remaining = Math.max(0, Math.round((item.arriveAt - now) / 1000))
   if (remaining === 0) return '進站中'
   const minutes = Math.floor(remaining / 60)
   const seconds = Math.max(0, remaining % 60)
@@ -118,7 +119,7 @@ const renderEta = (item: EtaItem) => {
 
 export default function EtaPanel({ station }: EtaPanelProps) {
   const [items, setItems] = useState<EtaItem[]>([])
-  const [, forceRender] = useReducer((tick: number) => tick + 1, 0)
+  const now = useNow()
 
   useEffect(() => {
     let cancelled = false
@@ -137,12 +138,10 @@ export default function EtaPanel({ station }: EtaPanelProps) {
 
     load()
     const poll = setInterval(load, 15000)
-    const ticker = setInterval(() => forceRender(), 1000)
 
     return () => {
       cancelled = true
       clearInterval(poll)
-      clearInterval(ticker)
     }
   }, [station.id])
 
@@ -160,7 +159,7 @@ export default function EtaPanel({ station }: EtaPanelProps) {
                 item.destinationStationId ??
                 ''}
             </div>
-            <div className="text-sm font-medium whitespace-nowrap">{renderEta(item)}</div>
+            <div className="text-sm font-medium whitespace-nowrap">{renderEta(item, now)}</div>
           </li>
         ))}
         {!items.length && <li className="py-6 text-center text-gray-500 text-sm">尚無即時資訊</li>}
