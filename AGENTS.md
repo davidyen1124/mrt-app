@@ -21,7 +21,7 @@ Rebuild the Bus+ Taipei MRT experience for the web. Preserve accurate datasets, 
 - Keep tests deterministic; avoid reaching out to live upstreams in automated runs.
 
 ## Data & API Care
-- `data/metro_taipei_stations_zh.json` and `data/taipei_station_coords.json` are bundled at build time. Validate schema and provenance before committing updates.
+- `data/taipei_stations_combined.json` is bundled at build time. Validate schema and provenance before committing updates.
 - Document dataset refreshes in PR descriptions and verify the frontend search flow after changes.
 - `TAIPEI_ETA_BASE` (see `worker/wrangler.toml`) is the single override knob for upstream ETAs. Update the Worker env and related docs together.
 

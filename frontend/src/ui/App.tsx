@@ -1,29 +1,59 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import MapView from './MapView'
 
-type Station = { index: number; id: string; codes: string[]; name_zh?: string }
+type Station = {
+  index?: number
+  id: string
+  codes: string[]
+  name_zh?: string
+  lat?: number
+  lng?: number
+}
 type Line = { line_index?: number; line_code?: string; stations: Station[] }
 
 async function fetchStations(): Promise<Line[]> {
-  const r = await fetch('/api/mrt/taipei/stations')
-  const data = await r.json()
-  const lines = (data && (data.lines ?? data.lines?.lines)) || []
-  return lines as Line[]
+  try {
+    const r = await fetch('/api/mrt/taipei/stations')
+    const data = await r.json()
+    const rawLines = Array.isArray(data?.lines) ? data.lines : []
+    return rawLines
+      .map((line: any) => {
+        if (!line || !Array.isArray(line.stations)) return null
+        const stations: Station[] = line.stations
+          .map((station: any) => {
+            if (!station || typeof station.id !== 'string') return null
+            const codes = Array.isArray(station.codes)
+              ? station.codes.filter((code: unknown): code is string => typeof code === 'string')
+              : []
+            const lat = typeof station.lat === 'number' ? station.lat : undefined
+            const lng = typeof station.lng === 'number' ? station.lng : undefined
+            const index = typeof station.index === 'number' ? station.index : undefined
+            const nameZh = typeof station.name_zh === 'string' ? station.name_zh : undefined
+            return { id: station.id, codes, lat, lng, index, name_zh: nameZh }
+          })
+          .filter((station: Station | null): station is Station => Boolean(station))
+        return {
+          stations,
+          ...(typeof line.line_index === 'number' ? { line_index: line.line_index } : {}),
+          ...(typeof line.line_code === 'string' ? { line_code: line.line_code } : {})
+        }
+      })
+      .filter((line: any): line is Line => Boolean(line))
+  } catch {
+    return []
+  }
 }
 
-async function fetchTaipeiCoords(): Promise<Record<string, { lat: number; lng: number }>> {
-  try {
-    const r = await fetch('/api/mrt/taipei/station-locations')
-    const m = await r.json()
-    const out: Record<string, { lat: number; lng: number }> = {}
-    for (const k of Object.keys(m || {})) {
-      const v = m[k]
-      if (v && typeof v.lat === 'number' && typeof v.lng === 'number') out[k] = { lat: v.lat, lng: v.lng }
+function extractCoords(lines: Line[]): Record<string, { lat: number; lng: number }> {
+  const out: Record<string, { lat: number; lng: number }> = {}
+  for (const line of lines) {
+    for (const station of line.stations) {
+      if (typeof station.lat === 'number' && typeof station.lng === 'number') {
+        out[station.id] = { lat: station.lat, lng: station.lng }
+      }
     }
-    return out
-  } catch {
-    return {}
   }
+  return out
 }
 
 export default function App() {
@@ -54,8 +84,10 @@ export default function App() {
   }, [q, lines])
 
   useEffect(() => {
-    fetchStations().then(setLines)
-    fetchTaipeiCoords().then(setCoordsById)
+    fetchStations().then(fetchedLines => {
+      setLines(fetchedLines)
+      setCoordsById(extractCoords(fetchedLines))
+    })
   }, [])
 
   useEffect(() => {

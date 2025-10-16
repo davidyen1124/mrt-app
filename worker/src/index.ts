@@ -85,12 +85,7 @@ async function handleApi(req: Request, env: Env): Promise<Response> {
   }
 
   if (pathname === '/api/mrt/taipei/stations') {
-    const dataModule = await import('../../data/metro_taipei_stations_zh.json')
-    return jsonResponse(unwrapJsonModule(dataModule))
-  }
-
-  if (pathname === '/api/mrt/taipei/station-locations') {
-    const dataModule = await import('../../data/taipei_station_coords.json')
+    const dataModule = await import('../../data/taipei_stations_combined.json')
     return jsonResponse(unwrapJsonModule(dataModule))
   }
 

@@ -5,7 +5,7 @@ This repository recreates the Taipei MRT portions of the Bus+ Android applicatio
 ## Repository Map
 - `frontend/` – Vite/Tailwind React app. `src/ui/` contains map, search, and sheet components.
 - `worker/` – Cloudflare Worker that serves built assets from KV and normalizes ETA responses.
-- `data/` – Extracted MRT datasets bundled with the Worker (`metro_taipei_stations_zh.json`, `taipei_station_coords.json`).
+- `data/` – Extracted MRT datasets bundled with the Worker (`taipei_stations_combined.json`).
 
 ## Prerequisites
 - Node.js 18 or newer with npm.
@@ -32,8 +32,7 @@ This repository recreates the Taipei MRT portions of the Bus+ Android applicatio
 
 ## Core API Routes
 - `GET /api/health` – simple liveness check.
-- `GET /api/mrt/taipei/stations` – MRT line + station metadata pulled from `data/metro_taipei_stations_zh.json`.
-- `GET /api/mrt/taipei/station-locations` – station coordinates map.
+- `GET /api/mrt/taipei/stations` – MRT line + station metadata with inline coordinates pulled from `data/taipei_stations_combined.json`.
 - `GET /api/mrt/taipei/eta?stationId=<id>` – upstream ETA proxy, augmented with `arriveAt` timestamps for countdowns.
 
 The upstream base URL is defined in `worker/wrangler.toml` as `TAIPEI_ETA_BASE`. Override it through Wrangler environment variables or secrets in production.
@@ -50,7 +49,7 @@ The upstream base URL is defined in `worker/wrangler.toml` as `TAIPEI_ETA_BASE`.
 Rebuild the frontend after dataset or UI changes so the Worker serves fresh assets.
 
 ## Data Maintenance
-- Keep JSON schema stable; downstream code expects station objects with `id`, `codes`, and `name_zh`.
+- Keep JSON schema stable; downstream code expects station objects with `id`, `codes`, `name_zh`, and `{lat,lng}` coordinates.
 - Validate new datasets before commit (linting, manual inspection). Large diffs should mention provenance in the PR description.
 - Treat APK-derived assets as read-only IP—do not redistribute outside the repo.
 
