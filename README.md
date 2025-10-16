@@ -1,73 +1,72 @@
-# Taipei MRT ETA Rebuild
+# Bus+ Taipei MRT Web Rebuild
 
-This repository rebuilds key pieces of the Bus+ Android APK as a web-friendly stack. The goal is to surface Taipei MRT station data and ETA lookups through a Cloudflare Worker API and a lightweight Vite + React frontend.
+This repository recreates the Taipei MRT portions of the Bus+ Android application as a web stack. A Cloudflare Worker exposes the API surface area while a Vite + React single-page app renders an interactive station map, search, and ETA sheet.
 
-## Repository Layout
-- `frontend/` – mobile-first React UI, built with Vite and Tailwind.
-- `worker/` – Cloudflare Worker that proxies ETA data and serves the built SPA.
-- `data/` – extracted station datasets sourced from the original APK.
-- `.gitignore`, `AGENTS.md`, `README.md` – repo defaults and working agreements.
+## Repository Map
+- `frontend/` – Vite/Tailwind React app. `src/ui/` contains map, search, and sheet components.
+- `worker/` – Cloudflare Worker that serves built assets from KV and normalizes ETA responses.
+- `data/` – Extracted MRT datasets bundled with the Worker (`metro_taipei_stations_zh.json`, `taipei_station_coords.json`).
 
 ## Prerequisites
-- Node.js 18+ and npm (or pnpm/yarn if you prefer).
-- Wrangler CLI authenticated with the target Cloudflare account (`npm i -g wrangler`).
-- GitHub CLI (`gh`) if you plan to manage the remote repository from the command line.
+- Node.js 18 or newer with npm.
+- Wrangler CLI (`npm i -g wrangler`) authenticated against your Cloudflare account before deploying.
+- Optional: Playwright browsers installed via `npx playwright install` to run UI smoke tests.
 
-## Getting Started
-1. Install dependencies for both projects:
+## Quickstart
+1. Install dependencies per package:
    ```bash
    cd frontend && npm install
    cd ../worker && npm install
    ```
-2. Build the frontend bundle that the Worker will serve:
+2. Build the frontend bundle that the Worker will host:
    ```bash
    cd frontend
    npm run build
    ```
-3. Launch the Worker locally (serves both API + SPA):
+3. Serve everything from the Worker in local mode:
    ```bash
-   cd worker
+   cd ../worker
    npm run dev
    ```
+   Wrangler exposes the app at `http://localhost:8787`, proxying `/api/*` requests.
 
-Visit <http://localhost:8787> while the Worker is running. It will proxy `/api/mrt/taipei/eta?stationId=<ID>` to the Bus+ upstream defined in `worker/wrangler.toml` and serve the SPA for other routes.
+## Core API Routes
+- `GET /api/health` – simple liveness check.
+- `GET /api/mrt/taipei/stations` – MRT line + station metadata pulled from `data/metro_taipei_stations_zh.json`.
+- `GET /api/mrt/taipei/station-locations` – station coordinates map.
+- `GET /api/mrt/taipei/eta?stationId=<id>[&normalized=1]` – upstream ETA proxy. `normalized=1` enriches each item with `etaSeconds`, `arriveAt`, and human-readable labels.
+
+The upstream base URL is defined in `worker/wrangler.toml` as `TAIPEI_ETA_BASE`. Override it through Wrangler environment variables or secrets in production.
 
 ## Development Workflow
-### Frontend (`frontend/`)
-- `npm run dev` – start Vite in development mode (hot reload).
-- `npm run build` – produce static assets in `frontend/dist/` for deployment.
-- `npm run preview` – serve the production build locally via Vite.
+- Frontend:
+  - `npm run dev` – Vite dev server with hot module reload.
+  - `npm run build` – generates `frontend/dist/` for Worker assets.
+  - `npm run preview` – serves the production build for local smoke checks.
+- Worker:
+  - `npm run dev` – local Worker with static assets from `frontend/dist`.
+  - `npm run deploy` – publishes to Cloudflare (requires authenticated Wrangler session).
 
-### Worker (`worker/`)
-- `npm run dev` – run the Worker with Wrangler in local mode.
-- `npm run deploy` – publish to Cloudflare (requires authenticated Wrangler session).
-
-Environment variables such as `TAIPEI_ETA_BASE` are configured in `worker/wrangler.toml`. Do not commit secrets; use Wrangler secrets for sensitive values.
+Rebuild the frontend after dataset or UI changes so the Worker serves fresh assets.
 
 ## Data Maintenance
-- `data/metro_taipei_stations_zh.json` is currently the authoritative dataset for MRT station metadata (Chinese names).
-- When datasets change, double-check JSON structure and field names before deploying updates.
-
-When datasets change, rebuild the frontend so the Worker serves the latest static bundle.
+- Keep JSON schema stable; downstream code expects station objects with `id`, `codes`, and `name_zh`.
+- Validate new datasets before commit (linting, manual inspection). Large diffs should mention provenance in the PR description.
+- Treat APK-derived assets as read-only IP—do not redistribute outside the repo.
 
 ## Testing
-Playwright is available in the frontend for smoke tests stored in `frontend/tests/`. Trigger them with:
-```bash
-cd frontend
-npx playwright test
-```
-Add more targeted tests as the UI and API expand. Keep tests deterministic and fast.
+- Frontend smoke tests live in `frontend/tests/`. Run them with `npx playwright test` (after installing Playwright browsers).
+- Add Worker-level Vitest/Miniflare checks when modifying HTTP handlers or normalization logic.
+- Aim for deterministic, fast tests; avoid hitting live upstream services during CI.
 
-## Conventions
-- Follow the coding style and branching guidance in `AGENTS.md`.
-- Use Conventional Commits where possible (`feat(frontend): add search modal`, etc.).
-- Avoid committing `node_modules`, local `.env` files, or Wrangler state—`.gitignore` is configured accordingly.
+## Deployment Notes
+- `wrangler.toml` already binds static assets (`__STATIC_CONTENT`) and sets `compatibility_date`.
+- Before running `npm run deploy`, ensure the Cloudflare project exists and the following secrets are configured:
+  - `CLOUDFLARE_ACCOUNT_ID`
+  - `CLOUDFLARE_API_TOKEN` (needs Workers Scripts read/write scopes)
+- GitHub Actions can reuse the same commands; wire them up once secrets are present.
 
-## CI/CD
-- GitHub Actions workflow `Deploy to Cloudflare` builds the frontend and runs `npm run deploy` in `worker/` for pushes to `main` or manual triggers.
-- Add the following repository secrets before enabling deployments:
-  - `CLOUDFLARE_ACCOUNT_ID` – Cloudflare account identifier (available in the Workers dashboard).
-  - `CLOUDFLARE_API_TOKEN` – API token with at least the *Account.Workers Scripts:Edit* and *Account.Workers Scripts:Read* permissions.
-- Optional: scope the token to the specific account and restrict IPs if your Cloudflare plan allows.
-
-Questions or future work items? Capture them in the issue tracker of the GitHub remote (`davidyen1124/bus-app-repo`) or inline TODO comments in the relevant modules.
+## Collaboration Guidelines
+- Follow the working agreements in `AGENTS.md` for branching, commit style, and review expectations.
+- Use Conventional Commits with scope prefixes (`feat(frontend): …`, `fix(worker): …`).
+- Record follow-up ideas as issues or TODO comments so future agents can pick them up quickly.

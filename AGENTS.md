@@ -1,38 +1,32 @@
 # Agent Operating Guide
 
-## Mission & Context
-This workspace reproduces portions of the Bus+ APK as a Cloudflare Worker + Vite/React application. Keep the developer experience sharp, avoid reintroducing mobile-specific artifacts, and ensure datasets stay trustworthy. The repository root is `/home/pi/bus/repo_root`.
+## Mission
+Rebuild the Bus+ Taipei MRT experience for the web. Preserve accurate datasets, keep the Cloudflare Worker lean, and ensure the React UI feels responsive on mobile and desktop.
 
-## Project Map
-- `frontend/` – mobile-first React SPA using Tailwind classes. Treat `src/ui/` as the main composition area.
-- `worker/` – serves the SPA and proxies API calls. Wrangler config in `wrangler.toml`.
-- `data/` – JSON datasets sourced from the APK. Update carefully alongside API changes.
-
-## Workflow Expectations
-1. Install dependencies per package (`frontend`, `worker`) before running builds or tests.
-2. Build the frontend (`npm run build`) prior to deploying/previewing via the Worker.
-3. Prefer editing within feature-focused modules; keep files small and colocated.
-4. Never commit `node_modules`, local `.env` files, Wrangler state, or Playwright artifacts—`.gitignore` is configured, but stay vigilant.
+## Daily Workflow
+1. Install dependencies for both packages before coding (`frontend`, `worker`).
+2. Build the frontend (`npm run build`) whenever assets or data change so the Worker serves fresh files.
+3. Run the Worker locally with `npm run dev` in `worker/` to exercise API routes and the bundled SPA.
+4. Capture open questions as TODOs or GitHub issues—never leave ambiguous code comments.
 
 ## Coding Standards
-- TypeScript + ES modules everywhere; 2-space indentation.
-- React: function components, hooks, and colocated types. Components in `PascalCase`, hooks/utilities in `camelCase`.
-- Tailwind utility classes in JSX where possible; use `styles.css` only for cross-cutting tokens.
-- Use descriptive names for Cloudflare Worker handlers; keep route handlers pure and isolated.
+- TypeScript + ES modules everywhere; prefer small, focused files.
+- React components in `PascalCase`, hooks/utilities in `camelCase`. Colocate component-specific types with their implementation.
+- Tailwind classes in JSX are the default; reserve `styles.css` for shared tokens and resets.
+- Worker handlers stay pure: parse the request, call helpers, return a response. Avoid side effects outside the fetch lifecycle.
 
 ## Testing
-- Frontend: Playwright smoke tests live in `frontend/tests/`. Run with `npx playwright test`.
-- Worker: add Vitest/Miniflare coverage in `worker/` when HTTP behaviour needs assertions.
-- Keep tests deterministic and fast; update datasets before relying on them in assertions.
+- Frontend smoke checks live in `frontend/tests/`. Run with `npx playwright test` after `npx playwright install`.
+- Add Vitest/Miniflare coverage in `worker/` when API logic changes (ETA normalization, dataset wiring, routing).
+- Keep tests deterministic; avoid reaching out to live upstreams in automated runs.
 
-## Git & Collaboration
-- Branch from `main`; use Conventional Commits (`feat(frontend): add station search`).
-- Reference scope (frontend/worker/data) in PR summaries. Include screenshots for UI-facing changes.
-- Run relevant checks (builds, validation commands, smoke tests) before pushing.
-- Document future tasks in issues or TODO comments rather than leaving ambiguous code.
+## Data & API Care
+- `data/metro_taipei_stations_zh.json` and `data/taipei_station_coords.json` are bundled at build time. Validate schema and provenance before committing updates.
+- Document dataset refreshes in PR descriptions and verify the frontend search flow after changes.
+- `TAIPEI_ETA_BASE` (see `worker/wrangler.toml`) is the single override knob for upstream ETAs. Update the Worker env and related docs together.
 
-## Security & Config
-- Secrets belong in Wrangler KV/secrets, not in source. `TAIPEI_ETA_BASE` is the current override knob.
-- When switching upstream APIs, update both the Worker env and any dependent documentation.
-- Treat extracted APK assets as read-only IP; do not re-distribute outside the repo without clearance.
-- GitHub Actions deployment uses `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` repository secrets; ensure they exist (token needs Workers Scripts read/write).
+## Security & Collaboration
+- Never commit secrets, Wrangler state, Playwright artifacts, or `node_modules`.
+- Use Conventional Commits with scope prefixes (`feat(frontend): …`, `chore(data): …`).
+- Branch from `main`, rebase frequently, and attach screenshots or recordings for UI-facing pull requests.
+- Treat APK-derived assets as read-only IP; keep redistribution inside this repository only.
