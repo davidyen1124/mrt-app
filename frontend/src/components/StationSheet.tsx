@@ -1,5 +1,4 @@
 import EtaPanel from '@/components/EtaPanel'
-import SheetHandle from '@/components/SheetHandle'
 import StationSearchInput from '@/components/StationSearchInput'
 import StationSearchResults from '@/components/StationSearchResults'
 import type { Station } from '@/types/station'
@@ -16,7 +15,6 @@ type StationSheetProps = {
   selected: Station | null
   results: Station[]
   onStationSelect: (station: Station) => void
-  onToggle: () => void
 }
 
 export default function StationSheet({
@@ -28,9 +26,12 @@ export default function StationSheet({
   mode,
   selected,
   results,
-  onStationSelect,
-  onToggle
+  onStationSelect
 }: StationSheetProps) {
+  const contentClassName = expanded
+    ? 'flex flex-1 flex-col gap-3 px-4 py-3 overflow-hidden'
+    : 'px-4 py-3'
+
   return (
     <div className="absolute inset-x-0 bottom-0 pointer-events-none">
       <div
@@ -38,11 +39,11 @@ export default function StationSheet({
         style={{
           height: `${sheetHeightPx}px`,
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
+          paddingTop: expanded ? '12px' : '8px',
           transition: 'height .25s ease'
         }}
       >
-        <SheetHandle expanded={expanded} onToggle={onToggle} />
-        <div className={expanded ? 'flex flex-1 flex-col gap-3 px-4 overflow-hidden' : 'px-4 pb-2'}>
+        <div className={contentClassName}>
           <StationSearchInput
             placeholder="搜尋「忠孝新生」"
             value={query}

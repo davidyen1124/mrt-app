@@ -55,12 +55,6 @@ export default function App() {
 
   const isExpanded = sheetMode !== 'idle'
 
-  const handleToggleSheet = useCallback(() => {
-    if (sheetMode === 'idle') return
-    setSelected(null)
-    setQuery('')
-  }, [sheetMode])
-
   const expandedBaseHeight = Math.round(Math.max(320, Math.min(600, viewportHeight * 0.5)))
   const compactBaseHeight = 92
   const sheetHeightPx = isExpanded ? expandedBaseHeight : compactBaseHeight
@@ -87,7 +81,6 @@ export default function App() {
           selected={selected}
           results={filtered}
           onStationSelect={handleStationSelect}
-          onToggle={handleToggleSheet}
         />
       </main>
     </div>
