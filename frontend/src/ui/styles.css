@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import 'maplibre-gl/dist/maplibre-gl.css';
 
 :root {
   color-scheme: light;
@@ -32,9 +31,6 @@
     display: flex;
     flex-direction: column;
   }
-
-  /* MapLibre GL base styles */
-  @import 'maplibre-gl/dist/maplibre-gl.css';
 
   input,
   textarea,
