@@ -1,7 +1,7 @@
+import type { Station } from '@/types/station'
 import type { GeoJSONSource, MapLayerMouseEvent, Map as MaplibreMap } from 'maplibre-gl'
 import maplibregl, { LngLatLike } from 'maplibre-gl'
 import { useEffect, useMemo, useRef } from 'react'
-import type { Station } from '@/types/station'
 
 type StationWithCoords = Station & { lat: number; lng: number }
 
@@ -203,13 +203,6 @@ export function MapView({
       if (station) onStationClickRef.current(station)
     }
 
-    const handleMouseEnter = () => {
-      mapInstance.getCanvas().style.cursor = 'pointer'
-    }
-    const handleMouseLeave = () => {
-      mapInstance.getCanvas().style.cursor = ''
-    }
-
     const handleLoad = () => {
       mapReadyRef.current = true
       mapInstance.setPadding(createPadding(bottomOffsetRef.current))
@@ -242,8 +235,6 @@ export function MapView({
         }
       })
       mapInstance.on('click', STATION_LAYER_ID, handleClick)
-      mapInstance.on('mouseenter', STATION_LAYER_ID, handleMouseEnter)
-      mapInstance.on('mouseleave', STATION_LAYER_ID, handleMouseLeave)
     }
 
     mapInstance.on('load', handleLoad)
@@ -251,8 +242,6 @@ export function MapView({
     return () => {
       mapInstance.off('load', handleLoad)
       mapInstance.off('click', STATION_LAYER_ID, handleClick)
-      mapInstance.off('mouseenter', STATION_LAYER_ID, handleMouseEnter)
-      mapInstance.off('mouseleave', STATION_LAYER_ID, handleMouseLeave)
       mapReadyRef.current = false
       mapInstance.remove()
       mapRef.current = null
