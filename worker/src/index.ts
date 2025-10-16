@@ -17,9 +17,7 @@ interface UpstreamEta extends UnknownRecord {
   secondsAgo?: unknown
 }
 
-type NormalizedEta = UpstreamEta & {
-  etaSeconds: number | null
-  etaLabel: string
+type EtaWithArrival = UpstreamEta & {
   arriveAt: number | null
 }
 
@@ -68,14 +66,6 @@ const parseEtaToSeconds = (value: unknown): number | null => {
   return Number.isFinite(numeric) ? numeric : null
 }
 
-const formatEtaLabel = (seconds: number): string => {
-  if (seconds === 0) return '進站中'
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = Math.max(0, seconds % 60)
-  if (minutes === 0) return `${remainingSeconds}秒`
-  return `${minutes}分${remainingSeconds}秒`
-}
-
 function jsonResponse<T>(obj: T, status = 200): Response {
   return new Response(JSON.stringify(obj), {
     status,
@@ -121,7 +111,7 @@ async function handleApi(req: Request, env: Env): Promise<Response> {
       const records = extractEtaArray(raw)
       const now = Date.now()
 
-      const normalizedPayload: NormalizedEta[] = records.map(entry => {
+      const normalizedPayload: EtaWithArrival[] = records.map(entry => {
         const baseSeconds = parseEtaToSeconds(entry.estimateTime)
         const secondsAgoValue = entry.secondsAgo
         let secondsAgo = 0
@@ -136,14 +126,10 @@ async function handleApi(req: Request, env: Env): Promise<Response> {
         }
 
         const etaSeconds = baseSeconds == null ? null : Math.max(0, baseSeconds - secondsAgo)
-        const fallbackLabel = entry.estimateTime == null ? '-' : String(entry.estimateTime)
-        const etaLabel = etaSeconds == null ? fallbackLabel : formatEtaLabel(etaSeconds)
         const arriveAt = etaSeconds == null ? null : now + etaSeconds * 1000
 
-        const normalizedEntry: NormalizedEta = {
+        const normalizedEntry: EtaWithArrival = {
           ...entry,
-          etaSeconds,
-          etaLabel,
           arriveAt
         }
 
