@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useState } from 'react'
-import type { Station } from '../types/station'
+import type { Station } from '@/types/station'
 
 type EtaItem = {
   routeName?: any

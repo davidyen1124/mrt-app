@@ -1,4 +1,4 @@
-import type { Station } from '../types/station'
+import type { Station } from '@/types/station'
 
 type StationSearchResultsProps = {
   stations: Station[]

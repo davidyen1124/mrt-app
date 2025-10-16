@@ -1,8 +1,8 @@
-import type { Station } from '../types/station'
-import EtaPanel from './EtaPanel'
-import SheetHandle from './SheetHandle'
-import StationSearchInput from './StationSearchInput'
-import StationSearchResults from './StationSearchResults'
+import type { Station } from '@/types/station'
+import EtaPanel from '@/components/EtaPanel'
+import SheetHandle from '@/components/SheetHandle'
+import StationSearchInput from '@/components/StationSearchInput'
+import StationSearchResults from '@/components/StationSearchResults'
 
 export type PanelState = 'idle' | 'search' | 'station'
 

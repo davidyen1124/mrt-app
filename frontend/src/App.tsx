@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import MapView from './components/MapView'
-import StationSheet, { type PanelState } from './components/StationSheet'
-import type { Line } from './types/line'
-import type { Station } from './types/station'
+import MapView from '@/components/MapView'
+import StationSheet, { type PanelState } from '@/components/StationSheet'
+import type { Line } from '@/types/line'
+import type { Station } from '@/types/station'
 
 async function fetchStations(): Promise<Line[]> {
   try {

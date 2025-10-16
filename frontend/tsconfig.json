@@ -6,9 +6,10 @@
     "jsx": "react-jsx",
     "strict": true,
     "baseUrl": ".",
-    "paths": {},
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "types": ["vite/client"]
   },
   "include": ["src"]
 }
-

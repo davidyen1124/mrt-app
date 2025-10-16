@@ -1,7 +1,7 @@
 import type { GeoJSONSource, MapLayerMouseEvent, Map as MaplibreMap } from 'maplibre-gl'
 import maplibregl, { LngLatLike } from 'maplibre-gl'
 import { useEffect, useMemo, useRef } from 'react'
-import type { Station } from '../types/station'
+import type { Station } from '@/types/station'
 
 type StationWithCoords = Station & { lat: number; lng: number }
 

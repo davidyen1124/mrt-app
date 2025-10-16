@@ -1,4 +1,4 @@
-import type { Station } from './station'
+import type { Station } from '@/types/station'
 
 export type Line = {
   line_index?: number
