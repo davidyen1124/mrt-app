@@ -153,7 +153,7 @@ export function MapView({
       style: styleUrl,
       center: [121.5654, 25.033] as LngLatLike,
       zoom: 11,
-      attributionControl: true,
+      attributionControl: false,
       scrollZoom: true,
       dragPan: true,
       pitchWithRotate: false,
@@ -166,11 +166,11 @@ export function MapView({
     }
 
     mapInstance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
-  const geolocate = new maplibregl.GeolocateControl({
-    positionOptions: { enableHighAccuracy: true },
-    trackUserLocation: true,
-    showAccuracyCircle: false
-  })
+    const geolocate = new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      trackUserLocation: true,
+      showAccuracyCircle: false
+    })
     mapInstance.addControl(geolocate, 'top-right')
     requestAnimationFrame(() => {
       if (mapReadyRef.current && mapRef.current) mapRef.current.resize()
