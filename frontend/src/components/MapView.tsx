@@ -69,16 +69,13 @@ export function MapView({
     map.setPadding(createPadding(bottomOffsetPx))
   }, [bottomOffsetPx])
 
-  // Try to infer coordinates from various common shapes
   const stationsWithCoords = useMemo(() => {
     const out: StationWithCoords[] = []
     const asNum = (v: any) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
     const swapIfNeeded = (a: number, b: number) =>
-      // Taiwan: lat ~ 21..26, lng ~ 119..123
       a > 60 && b < 60 ? { lat: b, lng: a } : { lat: a, lng: b }
 
     for (const s of stations || []) {
-      // Prefer provided coords mapping by id
       if (coordsById && coordsById[s.id] && typeof coordsById[s.id].lat === 'number') {
         const { lat, lng } = coordsById[s.id]
         out.push({ ...s, lat, lng })
@@ -146,7 +143,6 @@ export function MapView({
     }
   }, [uniqueStations])
 
-  // Initialize map once
   useEffect(() => {
     if (mapRef.current) return
     const container = ref.current
@@ -155,7 +151,7 @@ export function MapView({
     const mapInstance = new maplibregl.Map({
       container,
       style: styleUrl,
-      center: [121.5654, 25.033] as LngLatLike, // Taipei City Hall approx
+      center: [121.5654, 25.033] as LngLatLike,
       zoom: 11,
       attributionControl: true,
       scrollZoom: true,
@@ -169,7 +165,6 @@ export function MapView({
       mapInstance.touchZoomRotate.disableRotation()
     }
 
-    // Controls: nav + geolocate at top-right (avoid bottom sheet overlap)
     mapInstance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
   const geolocate = new maplibregl.GeolocateControl({
     positionOptions: { enableHighAccuracy: true },
@@ -185,7 +180,6 @@ export function MapView({
     geolocate.on('geolocate', (e: any) => {
       const { latitude: lat, longitude: lng } = e.coords || {}
       if (typeof lat !== 'number' || typeof lng !== 'number') return
-      // Snap to nearest station if we have coordinates
       const currentStations = stationsListRef.current
       if (currentStations.length) {
         let best: StationWithCoords | null = null
@@ -279,7 +273,6 @@ export function MapView({
     return () => observer.disconnect()
   }, [])
 
-  // Keep GeoJSON source in sync with station coordinates
   useEffect(() => {
     stationGeoJsonRef.current = stationGeoJson
     const map = mapRef.current
@@ -288,7 +281,6 @@ export function MapView({
     if (source) source.setData(stationGeoJson as any)
   }, [stationGeoJson])
 
-  // Focus/center on selected station if it has coordinates
   useEffect(() => {
     const map = mapRef.current
     if (!map || !selected || !mapReadyRef.current) return
@@ -303,7 +295,6 @@ export function MapView({
     }
   }, [selected, stationLookup, bottomOffsetPx])
 
-  // Update selected layer filter when selection changes
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapReadyRef.current) return
@@ -322,7 +313,11 @@ export function MapView({
     map.resize()
   }, [viewportHeight])
 
-  return <div ref={ref} className="absolute inset-0" />
+  return (
+    <div className="absolute inset-0">
+      <div ref={ref} className="h-full w-full" />
+    </div>
+  )
 }
 
 export default MapView
