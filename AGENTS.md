@@ -6,9 +6,7 @@ This workspace reproduces portions of the Bus+ APK as a Cloudflare Worker + Vite
 ## Project Map
 - `frontend/` – mobile-first React SPA using Tailwind classes. Treat `src/ui/` as the main composition area.
 - `worker/` – serves the SPA and proxies API calls. Wrangler config in `wrangler.toml`.
-- `data/` – JSON datasets sourced from the APK. Regenerate via `scripts/`.
-- `scripts/` – node utilities for dataset validation.
-- `bus_xapk/`, `bus.xapk`, `apktool`, `apktool.jar` – reference extraction assets; leave untouched unless a new APK drop is being reverse engineered.
+- `data/` – JSON datasets sourced from the APK. Update carefully alongside API changes.
 
 ## Workflow Expectations
 1. Install dependencies per package (`frontend`, `worker`) before running builds or tests.
@@ -29,8 +27,8 @@ This workspace reproduces portions of the Bus+ APK as a Cloudflare Worker + Vite
 
 ## Git & Collaboration
 - Branch from `main`; use Conventional Commits (`feat(frontend): add station search`).
-- Reference scope (frontend/worker/data/scripts) in PR summaries. Include screenshots for UI-facing changes.
-- Run relevant checks (builds, validation scripts, smoke tests) before pushing.
+- Reference scope (frontend/worker/data) in PR summaries. Include screenshots for UI-facing changes.
+- Run relevant checks (builds, validation commands, smoke tests) before pushing.
 - Document future tasks in issues or TODO comments rather than leaving ambiguous code.
 
 ## Security & Config

@@ -6,8 +6,6 @@ This repository rebuilds key pieces of the Bus+ Android APK as a web-friendly st
 - `frontend/` – mobile-first React UI, built with Vite and Tailwind.
 - `worker/` – Cloudflare Worker that proxies ETA data and serves the built SPA.
 - `data/` – extracted station datasets sourced from the original APK.
-- `scripts/` – dataset validation utilities.
-- `bus_xapk/`, `bus.xapk`, `apktool`, `apktool.jar` – tooling and artifacts kept for reference when extracting assets.
 - `.gitignore`, `AGENTS.md`, `README.md` – repo defaults and working agreements.
 
 ## Prerequisites
@@ -43,13 +41,12 @@ Visit <http://localhost:8787> while the Worker is running. It will proxy `/api/m
 ### Worker (`worker/`)
 - `npm run dev` – run the Worker with Wrangler in local mode.
 - `npm run deploy` – publish to Cloudflare (requires authenticated Wrangler session).
-- `npm run validate:stations` – sanity-check the extracted station data against JSON schema rules.
 
 Environment variables such as `TAIPEI_ETA_BASE` are configured in `worker/wrangler.toml`. Do not commit secrets; use Wrangler secrets for sensitive values.
 
 ## Data Maintenance
 - `data/metro_taipei_stations_zh.json` is currently the authoritative dataset for MRT station metadata (Chinese names).
-- `scripts/validate-taipei-stations.mjs` enforces basic structural validation to prevent regressions.
+- When datasets change, double-check JSON structure and field names before deploying updates.
 
 When datasets change, rebuild the frontend so the Worker serves the latest static bundle.
 
