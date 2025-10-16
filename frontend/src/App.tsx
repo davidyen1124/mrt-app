@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
 import MapView from '@/components/MapView'
 import StationSheet, { type PanelState } from '@/components/StationSheet'
 import type { Line } from '@/types/line'
 import type { Station } from '@/types/station'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 async function fetchStations(): Promise<Line[]> {
   try {
@@ -57,10 +57,18 @@ export default function App() {
   }, [q, lines])
 
   useEffect(() => {
-    fetchStations().then(fetchedLines => {
-      setLines(fetchedLines)
-      setCoordsById(extractCoords(fetchedLines))
-    })
+    let isCancelled = false
+    const loadStations = async () => {
+      const fetchedLines = await fetchStations()
+      if (!isCancelled) {
+        setLines(fetchedLines)
+        setCoordsById(extractCoords(fetchedLines))
+      }
+    }
+    loadStations()
+    return () => {
+      isCancelled = true
+    }
   }, [])
 
   useEffect(() => {
