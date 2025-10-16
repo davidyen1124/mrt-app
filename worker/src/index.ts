@@ -1,3 +1,4 @@
+import type { Options } from '@cloudflare/kv-asset-handler'
 import { getAssetFromKV, NotFoundError } from '@cloudflare/kv-asset-handler'
 
 export interface Env {
@@ -5,7 +6,77 @@ export interface Env {
   TAIPEI_ETA_BASE: string
 }
 
-function jsonResponse(obj: any, status = 200) {
+type UnknownRecord = Record<string, unknown>
+
+interface JsonModule extends UnknownRecord {
+  default: unknown
+}
+
+interface UpstreamEta extends UnknownRecord {
+  estimateTime?: unknown
+  secondsAgo?: unknown
+}
+
+type NormalizedEta = UpstreamEta & {
+  etaSeconds: number | null
+  etaLabel: string
+  arriveAt: number | null
+}
+
+const isRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === 'object' && value !== null
+
+const isJsonModule = (value: unknown): value is JsonModule =>
+  isRecord(value) && 'default' in value
+
+const unwrapJsonModule = (value: unknown): unknown =>
+  isJsonModule(value) ? value.default : value
+
+const isUpstreamEta = (value: unknown): value is UpstreamEta => isRecord(value)
+
+const extractEtaArray = (value: unknown): UpstreamEta[] => {
+  if (Array.isArray(value)) {
+    return value.filter(isUpstreamEta)
+  }
+
+  if (isRecord(value)) {
+    const candidateKeys = ['items', 'result'] as const
+    for (const key of candidateKeys) {
+      if (key in value) {
+        const nested = extractEtaArray(value[key])
+        if (nested.length > 0) return nested
+      }
+    }
+  }
+
+  return []
+}
+
+const parseEtaToSeconds = (value: unknown): number | null => {
+  if (value == null) return null
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  const trimmed = String(value).trim()
+  if (!trimmed) return null
+  if (/進站/.test(trimmed)) return 0
+  if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
+    const [minutes, seconds] = trimmed.split(':').map(segment => Number.parseInt(segment, 10))
+    if (Number.isFinite(minutes) && Number.isFinite(seconds)) {
+      return minutes * 60 + seconds
+    }
+  }
+  const numeric = Number(trimmed)
+  return Number.isFinite(numeric) ? numeric : null
+}
+
+const formatEtaLabel = (seconds: number): string => {
+  if (seconds === 0) return '進站中'
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = Math.max(0, seconds % 60)
+  if (minutes === 0) return `${remainingSeconds}秒`
+  return `${minutes}分${remainingSeconds}秒`
+}
+
+function jsonResponse<T>(obj: T, status = 200): Response {
   return new Response(JSON.stringify(obj), {
     status,
     headers: {
@@ -15,7 +86,7 @@ function jsonResponse(obj: any, status = 200) {
   })
 }
 
-async function handleApi(req: Request, env: Env) {
+async function handleApi(req: Request, env: Env): Promise<Response> {
   const url = new URL(req.url)
   const { pathname, searchParams } = url
 
@@ -24,91 +95,73 @@ async function handleApi(req: Request, env: Env) {
   }
 
   if (pathname === '/api/mrt/taipei/stations') {
-    // Serve the extracted dataset bundled at build time
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore - esbuild json import
-    const data = (await import('../../data/metro_taipei_stations_zh.json'))
-    return jsonResponse(data.default ?? data)
+    const dataModule = await import('../../data/metro_taipei_stations_zh.json')
+    return jsonResponse(unwrapJsonModule(dataModule))
   }
 
   if (pathname === '/api/mrt/taipei/station-locations') {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore - esbuild json import
-    const data = (await import('../../data/taipei_station_coords.json'))
-    return jsonResponse(data.default ?? data)
+    const dataModule = await import('../../data/taipei_station_coords.json')
+    return jsonResponse(unwrapJsonModule(dataModule))
   }
 
   if (pathname === '/api/mrt/taipei/eta') {
     const stationId = searchParams.get('stationId')
     if (!stationId) return jsonResponse({ error: 'stationId required' }, 400)
+
     const upstream = `${env.TAIPEI_ETA_BASE}${encodeURIComponent(stationId)}`
-    const ures = await fetch(upstream, {
+    const upstreamResponse = await fetch(upstream, {
       headers: { 'user-agent': 'mrt-app/1.0 (+worker)' }
     })
+    const passthroughContentType =
+      upstreamResponse.headers.get('content-type') || 'application/json'
+    const upstreamBody = await upstreamResponse.text()
 
-    const passthroughContentType = ures.headers.get('content-type') || 'application/json'
-    const upstreamBody = await ures.text()
-
-    // Always normalize: parse JSON and attach etaSeconds/arriveAt/etaLabel; fallback to passthrough on errors.
     try {
+      const raw: unknown = upstreamBody ? (JSON.parse(upstreamBody) as unknown) : []
+      const records = extractEtaArray(raw)
       const now = Date.now()
-      const raw = await ures.json()
-      const arr: any[] = Array.isArray(raw)
-        ? raw
-        : Array.isArray((raw as any)?.items)
-        ? (raw as any).items
-        : Array.isArray((raw as any)?.result)
-        ? (raw as any).result
-        : []
 
-      const parseEtaToSeconds = (v: unknown): number | null => {
-        if (v == null) return null
-        if (typeof v === 'number' && Number.isFinite(v)) return v
-        const s = String(v).trim()
-        if (!s) return null
-        if (/進站/.test(s)) return 0
-        if (/^\d{1,2}:\d{2}$/.test(s)) {
-          const [m, sec] = s.split(':').map(n => parseInt(n, 10))
-          if (Number.isFinite(m) && Number.isFinite(sec)) return m * 60 + sec
+      const normalizedPayload: NormalizedEta[] = records.map(entry => {
+        const baseSeconds = parseEtaToSeconds(entry.estimateTime)
+        const secondsAgoValue = entry.secondsAgo
+        let secondsAgo = 0
+
+        if (typeof secondsAgoValue === 'number' && Number.isFinite(secondsAgoValue)) {
+          secondsAgo = Math.max(0, secondsAgoValue)
+        } else if (typeof secondsAgoValue === 'string') {
+          const parsedValue = Number.parseFloat(secondsAgoValue)
+          if (Number.isFinite(parsedValue)) {
+            secondsAgo = Math.max(0, parsedValue)
+          }
         }
-        const n = Number(s)
-        if (Number.isFinite(n)) return n
-        return null
-      }
 
-      const formatEtaLabel = (secs: number): string => {
-        if (secs === 0) return '進站中'
-        const m = Math.floor(secs / 60)
-        const s = Math.max(0, secs % 60)
-        if (m === 0) return `${s}秒`
-        return `${m}分${s}秒`
-      }
-
-      const out = arr.map((it: any) => {
-        const base = parseEtaToSeconds(it?.estimateTime)
-        const secondsAgo = Number(it?.secondsAgo) || 0
-        const etaSeconds = base == null ? null : Math.max(0, base - Math.max(0, secondsAgo))
-        const etaLabel = etaSeconds == null
-          ? (it?.estimateTime ?? '-')
-          : formatEtaLabel(etaSeconds)
+        const etaSeconds = baseSeconds == null ? null : Math.max(0, baseSeconds - secondsAgo)
+        const fallbackLabel = entry.estimateTime == null ? '-' : String(entry.estimateTime)
+        const etaLabel = etaSeconds == null ? fallbackLabel : formatEtaLabel(etaSeconds)
         const arriveAt = etaSeconds == null ? null : now + etaSeconds * 1000
-        return { ...it, etaSeconds, etaLabel, arriveAt }
+
+        const normalizedEntry: NormalizedEta = {
+          ...entry,
+          etaSeconds,
+          etaLabel,
+          arriveAt
+        }
+
+        return normalizedEntry
       })
 
-      return new Response(JSON.stringify(out), {
+      return new Response(JSON.stringify(normalizedPayload), {
         status: 200,
         headers: {
           'content-type': 'application/json; charset=utf-8',
           'access-control-allow-origin': '*'
         }
       })
-    } catch (e) {
-      // Fallback to passthrough if normalization fails
-      const body = await ures.text()
-      return new Response(body, {
-        status: ures.status,
+    } catch {
+      return new Response(upstreamBody, {
+        status: upstreamResponse.status,
         headers: {
-          'content-type': ures.headers.get('content-type') || 'application/json',
+          'content-type': passthroughContentType,
           'access-control-allow-origin': '*'
         }
       })
@@ -125,17 +178,19 @@ export default {
       return handleApi(req, env)
     }
 
-    // Static assets: fall through to KV asset handler (serves frontend/dist)
+    const waitUntil = ctx.waitUntil.bind(ctx)
+    const assetOptions: Partial<Options> = {
+      ASSET_NAMESPACE: env.__STATIC_CONTENT
+    }
+
     try {
-      // try exact match first
-      return await getAssetFromKV({ request: req, waitUntil: ctx.waitUntil.bind(ctx) }, { env })
-    } catch (e) {
-      if (e instanceof NotFoundError) {
-        // SPA fallback to index.html
+      return await getAssetFromKV({ request: req, waitUntil }, assetOptions)
+    } catch (error) {
+      if (error instanceof NotFoundError) {
         const indexReq = new Request(new URL('/index.html', req.url), req)
-        return await getAssetFromKV({ request: indexReq, waitUntil: ctx.waitUntil.bind(ctx) }, { env })
+        return await getAssetFromKV({ request: indexReq, waitUntil }, assetOptions)
       }
-      throw e
+      throw error
     }
   }
 }
