@@ -1,5 +1,8 @@
 # Bus+ Taipei MRT Web Rebuild
 
+![Bus+ Taipei MRT screenshot](./screenshot.png)
+https://mrt-app.davidyen1124.workers.dev/
+
 This repository recreates the Taipei MRT portions of the Bus+ Android application as a web stack. A Cloudflare Worker exposes the API surface area while a Vite + React single-page app renders an interactive station map, search, and ETA sheet.
 
 ## Repository Map
