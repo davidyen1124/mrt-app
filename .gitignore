@@ -1,3 +1,26 @@
+node_modules/
 **/node_modules/
+
+# Build artifacts
+dist/
+**/dist/
+*.tsbuildinfo
+
+# Logs and coverage
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+.vitest/
+
+# Local env/config
+.env
+.env.*
 .wrangler/
+.wrangler-state/
+.wrangler/tmp/
+.vscode/
+.DS_Store
+Thumbs.db

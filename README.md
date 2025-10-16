@@ -1,20 +1,69 @@
-Taipei MRT (Bus+ APK) — Web Rebuild
+# Taipei MRT ETA Rebuild
 
-What’s here
+This repository rebuilds key pieces of the Bus+ Android APK as a web-friendly stack. The goal is to surface Taipei MRT station data and ETA lookups through a Cloudflare Worker API and a lightweight Vite + React frontend.
 
-- data/metro_taipei_stations_zh.json — extracted Taipei MRT stations (per line) with station IDs and Chinese names, parsed from the decompiled APK’s `TaipeiMetroView.smali`.
-- frontend/ — Vite + React + Tailwind, mobile‑first UI (search + bottom sheet + ETA fetch).
-- worker/ — Cloudflare Worker that serves both API and the built frontend. It exposes:
-  - GET /api/mrt/taipei/stations — the extracted dataset
-  - GET /api/mrt/taipei/eta?stationId=R10 — proxies to the Bus+ upstream
+## Repository Layout
+- `frontend/` – mobile-first React UI, built with Vite and Tailwind.
+- `worker/` – Cloudflare Worker that proxies ETA data and serves the built SPA.
+- `data/` – extracted station datasets sourced from the original APK.
+- `scripts/` – maintenance utilities for refreshing and validating the datasets.
+- `bus_xapk/`, `bus.xapk`, `apktool`, `apktool.jar` – tooling and artifacts kept for reference when extracting assets.
+- `.gitignore`, `AGENTS.md`, `README.md` – repo defaults and working agreements.
 
-Dev quickstart
+## Prerequisites
+- Node.js 18+ and npm (or pnpm/yarn if you prefer).
+- Wrangler CLI authenticated with the target Cloudflare account (`npm i -g wrangler`).
+- GitHub CLI (`gh`) if you plan to manage the remote repository from the command line.
 
-- Build the frontend: in `frontend/`, run `npm i` then `npm run build` (or `pnpm`/`yarn`).
-- Deploy or run the Worker: in `worker/`, run `npm i`, then `npm run dev` for local dev, or `npm run deploy` (requires Wrangler auth). The Worker serves `/` from `frontend/dist` and `/api/*` from Worker code.
+## Getting Started
+1. Install dependencies for both projects:
+   ```bash
+   cd frontend && npm install
+   cd ../worker && npm install
+   ```
+2. Build the frontend bundle that the Worker will serve:
+   ```bash
+   cd frontend
+   npm run build
+   ```
+3. Launch the Worker locally (serves both API + SPA):
+   ```bash
+   cd worker
+   npm run dev
+   ```
 
-Notes
+Visit <http://localhost:8787> while the Worker is running. It will proxy `/api/mrt/taipei/eta?stationId=<ID>` to the Bus+ upstream defined in `worker/wrangler.toml` and serve the SPA for other routes.
 
-- English station names will be wired up next; the Chinese dataset is authoritative for now.
-- You can switch the ETA upstream in `worker/wrangler.toml` via the `TAIPEI_ETA_BASE` var later (e.g. TDX/TRTC).
+## Development Workflow
+### Frontend (`frontend/`)
+- `npm run dev` – start Vite in development mode (hot reload).
+- `npm run build` – produce static assets in `frontend/dist/` for deployment.
+- `npm run preview` – serve the production build locally via Vite.
 
+### Worker (`worker/`)
+- `npm run dev` – run the Worker with Wrangler in local mode.
+- `npm run deploy` – publish to Cloudflare (requires authenticated Wrangler session).
+- `npm run validate:stations` – sanity-check the extracted station data against JSON schema rules.
+
+Environment variables such as `TAIPEI_ETA_BASE` are configured in `worker/wrangler.toml`. Do not commit secrets; use Wrangler secrets for sensitive values.
+
+## Data Maintenance
+- `data/metro_taipei_stations_zh.json` is currently the authoritative dataset for MRT station metadata (Chinese names).
+- `scripts/validate-taipei-stations.mjs` enforces basic structural validation to prevent regressions.
+
+When datasets change, rebuild the frontend so the Worker serves the latest static bundle.
+
+## Testing
+Playwright is available in the frontend for smoke tests stored in `frontend/tests/`. Trigger them with:
+```bash
+cd frontend
+npx playwright test
+```
+Add more targeted tests as the UI and API expand. Keep tests deterministic and fast.
+
+## Conventions
+- Follow the coding style and branching guidance in `AGENTS.md`.
+- Use Conventional Commits where possible (`feat(frontend): add search modal`, etc.).
+- Avoid committing `node_modules`, local `.env` files, or Wrangler state—`.gitignore` is configured accordingly.
+
+Questions or future work items? Capture them in the issue tracker of the GitHub remote (`davidyen1124/bus-app-repo`) or inline TODO comments in the relevant modules.

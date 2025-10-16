@@ -1,44 +1,39 @@
-# Repository Guidelines
+# Agent Operating Guide
 
-## Project Structure & Module Organization
-- `frontend/` – Vite + React + Tailwind UI (mobile‑first).
-  - `src/ui/` components (e.g., `App.tsx`, `styles.css`).
-- `worker/` – Cloudflare Worker serving API and static assets.
-  - `src/index.ts` entry; `wrangler.toml` config (serves `../frontend/dist`).
-- `data/` – extracted datasets (e.g., `metro_taipei_stations_zh.json`).
-- `README.md` – quick start; `AGENTS.md` – this guide.
+## Mission & Context
+This workspace reproduces portions of the Bus+ APK as a Cloudflare Worker + Vite/React application. Keep the developer experience sharp, avoid reintroducing mobile-specific artifacts, and ensure datasets stay trustworthy. The repository root is `/home/pi/bus/repo_root`.
 
-## Build, Test, and Development Commands
-- Frontend
-  - `cd frontend && npm i && npm run dev` – local dev server.
-  - `cd frontend && npm run build` – build to `frontend/dist`.
-- Worker
-  - `cd worker && npm i && npx wrangler dev` – local Worker (serves API + SPA).
-  - `cd worker && npx wrangler deploy` – deploy to Cloudflare.
-- Health checks
-  - `curl $URL/api/health` – confirms Worker is up.
+## Project Map
+- `frontend/` – mobile-first React SPA using Tailwind classes. Treat `src/ui/` as the main composition area.
+- `worker/` – serves the SPA and proxies API calls. Wrangler config in `wrangler.toml`.
+- `data/` – JSON datasets sourced from the APK. Regenerate via `scripts/`.
+- `scripts/` – node utilities for dataset validation.
+- `bus_xapk/`, `bus.xapk`, `apktool`, `apktool.jar` – reference extraction assets; leave untouched unless a new APK drop is being reverse engineered.
 
-## Coding Style & Naming Conventions
-- TypeScript, ES modules, 2‑space indentation.
-- React function components; file names:
-  - Components: `PascalCase` (e.g., `App.tsx`).
-  - Utilities/hooks: `camelCase.ts`.
-- Tailwind for styling; prefer utility classes in JSX over custom CSS.
-- Keep modules small and colocate UI, hooks, and types per feature in `src/ui/feature/*` when it grows.
+## Workflow Expectations
+1. Install dependencies per package (`frontend`, `worker`) before running builds or tests.
+2. Build the frontend (`npm run build`) prior to deploying/previewing via the Worker.
+3. Prefer editing within feature-focused modules; keep files small and colocated.
+4. Never commit `node_modules`, local `.env` files, Wrangler state, or Playwright artifacts—`.gitignore` is configured, but stay vigilant.
 
-## Testing Guidelines
-- No test suite yet. If adding tests:
-  - Frontend: Vitest + React Testing Library (`frontend/src/__tests__/*.test.tsx`).
-  - Worker: Vitest or Miniflare (`worker/test/*.test.ts`).
-  - Keep tests fast and deterministic; add basic API and rendering smoke tests.
+## Coding Standards
+- TypeScript + ES modules everywhere; 2-space indentation.
+- React: function components, hooks, and colocated types. Components in `PascalCase`, hooks/utilities in `camelCase`.
+- Tailwind utility classes in JSX where possible; use `styles.css` only for cross-cutting tokens.
+- Use descriptive names for Cloudflare Worker handlers; keep route handlers pure and isolated.
 
-## Commit & Pull Request Guidelines
-- Use Conventional Commits where possible:
-  - `feat(frontend): …`, `fix(worker): …`, `chore(data): …`.
-- PRs should include:
-  - Summary of change, scope (frontend/worker/data), before/after screenshots for UI, and any deployment steps.
-  - Link related issues; keep PRs small and focused.
+## Testing
+- Frontend: Playwright smoke tests live in `frontend/tests/`. Run with `npx playwright test`.
+- Worker: add Vitest/Miniflare coverage in `worker/` when HTTP behaviour needs assertions.
+- Keep tests deterministic and fast; update datasets before relying on them in assertions.
 
-## Security & Configuration Tips
-- Do not commit secrets. Configure env in `wrangler.toml` (e.g., `TAIPEI_ETA_BASE`).
-- Static assets are served from `frontend/dist`; dataset JSONs are bundled via static import in the Worker—update `data/` then redeploy.
+## Git & Collaboration
+- Branch from `main`; use Conventional Commits (`feat(frontend): add station search`).
+- Reference scope (frontend/worker/data/scripts) in PR summaries. Include screenshots for UI-facing changes.
+- Run relevant checks (builds, validation scripts, smoke tests) before pushing.
+- Document future tasks in issues or TODO comments rather than leaving ambiguous code.
+
+## Security & Config
+- Secrets belong in Wrangler KV/secrets, not in source. `TAIPEI_ETA_BASE` is the current override knob.
+- When switching upstream APIs, update both the Worker env and any dependent documentation.
+- Treat extracted APK assets as read-only IP; do not re-distribute outside the repo without clearance.
