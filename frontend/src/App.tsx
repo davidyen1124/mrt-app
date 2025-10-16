@@ -36,12 +36,16 @@ export default function App() {
   const handleQueryChange = useCallback(
     (value: string) => {
       setQuery(value)
+      if (value.trim().length > 0) {
+        setSelected(null)
+      }
     },
     []
   )
 
   const handleClearQuery = useCallback(() => {
     setQuery('')
+    setSelected(null)
   }, [])
 
   const handleStationSelect = useCallback((station: Station) => {
