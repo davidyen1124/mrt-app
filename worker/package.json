@@ -8,10 +8,10 @@
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
-    "wrangler": "^4.43.0",
-    "typescript": "^5.9.3"
+    "wrangler": "^3.49.0",
+    "typescript": "^5.4.0"
   },
   "dependencies": {
-    "@cloudflare/kv-asset-handler": "^0.4.0"
+    "@cloudflare/kv-asset-handler": "^0.3.0"
   }
 }
