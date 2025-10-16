@@ -33,9 +33,6 @@
     flex-direction: column;
   }
 
-  /* MapLibre GL base styles */
-  @import 'maplibre-gl/dist/maplibre-gl.css';
-
   input,
   textarea,
   select,
