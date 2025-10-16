@@ -6,7 +6,7 @@ This repository rebuilds key pieces of the Bus+ Android APK as a web-friendly st
 - `frontend/` – mobile-first React UI, built with Vite and Tailwind.
 - `worker/` – Cloudflare Worker that proxies ETA data and serves the built SPA.
 - `data/` – extracted station datasets sourced from the original APK.
-- `scripts/` – maintenance utilities for refreshing and validating the datasets.
+- `scripts/` – dataset validation utilities.
 - `bus_xapk/`, `bus.xapk`, `apktool`, `apktool.jar` – tooling and artifacts kept for reference when extracting assets.
 - `.gitignore`, `AGENTS.md`, `README.md` – repo defaults and working agreements.
 
