@@ -187,7 +187,7 @@ function EtaPanel({ station }: { station: Station }) {
 
     const load = async () => {
       try {
-        const r = await fetch(`/api/mrt/taipei/eta?stationId=${encodeURIComponent(station.id)}&normalized=1`)
+        const r = await fetch(`/api/mrt/taipei/eta?stationId=${encodeURIComponent(station.id)}`)
         const raw = await r.json()
         const data: EtaItem[] = Array.isArray(raw)
           ? raw

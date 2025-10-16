@@ -34,7 +34,7 @@ This repository recreates the Taipei MRT portions of the Bus+ Android applicatio
 - `GET /api/health` – simple liveness check.
 - `GET /api/mrt/taipei/stations` – MRT line + station metadata pulled from `data/metro_taipei_stations_zh.json`.
 - `GET /api/mrt/taipei/station-locations` – station coordinates map.
-- `GET /api/mrt/taipei/eta?stationId=<id>[&normalized=1]` – upstream ETA proxy. `normalized=1` enriches each item with `etaSeconds`, `arriveAt`, and human-readable labels.
+- `GET /api/mrt/taipei/eta?stationId=<id>` – upstream ETA proxy, normalized with `etaSeconds`, `arriveAt`, and human-readable labels.
 
 The upstream base URL is defined in `worker/wrangler.toml` as `TAIPEI_ETA_BASE`. Override it through Wrangler environment variables or secrets in production.
 

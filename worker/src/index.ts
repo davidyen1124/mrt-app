@@ -41,25 +41,15 @@ async function handleApi(req: Request, env: Env) {
   if (pathname === '/api/mrt/taipei/eta') {
     const stationId = searchParams.get('stationId')
     if (!stationId) return jsonResponse({ error: 'stationId required' }, 400)
-    const normalized = /^1|true$/i.test(searchParams.get('normalized') || '')
     const upstream = `${env.TAIPEI_ETA_BASE}${encodeURIComponent(stationId)}`
     const ures = await fetch(upstream, {
       headers: { 'user-agent': 'mrt-app/1.0 (+worker)' }
     })
 
-    // If client didn't request normalization, pass through as-is.
-    if (!normalized) {
-      const body = await ures.text()
-      return new Response(body, {
-        status: ures.status,
-        headers: {
-          'content-type': ures.headers.get('content-type') || 'application/json',
-          'access-control-allow-origin': '*'
-        }
-      })
-    }
+    const passthroughContentType = ures.headers.get('content-type') || 'application/json'
+    const upstreamBody = await ures.text()
 
-    // Normalized mode: parse JSON and attach etaSeconds/arriveAt/etaLabel
+    // Always normalize: parse JSON and attach etaSeconds/arriveAt/etaLabel; fallback to passthrough on errors.
     try {
       const now = Date.now()
       const raw = await ures.json()
