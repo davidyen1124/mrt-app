@@ -1,14 +1,7 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
-import MapView from './MapView'
+import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+import type { Station } from '../types/station';
+import MapView from './MapView';
 
-type Station = {
-  index?: number
-  id: string
-  codes: string[]
-  name_zh?: string
-  lat?: number
-  lng?: number
-}
 type Line = { line_index?: number; line_code?: string; stations: Station[] }
 
 async function fetchStations(): Promise<Line[]> {

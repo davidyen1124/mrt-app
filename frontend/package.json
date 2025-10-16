@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.4.18",
     "postcss": "^8.4.32",
@@ -17,8 +19,8 @@
     "vite": "^5.0.0"
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "maplibre-gl": "^3.6.2"
+    "maplibre-gl": "^3.6.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   }
 }

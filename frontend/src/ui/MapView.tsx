@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef } from 'react'
+import type { GeoJSONSource, MapLayerMouseEvent, Map as MaplibreMap } from 'maplibre-gl'
 import maplibregl, { LngLatLike } from 'maplibre-gl'
-import type { GeoJSONSource, Map as MaplibreMap, MapLayerMouseEvent } from 'maplibre-gl'
+import { useEffect, useMemo, useRef } from 'react'
+import type { Station } from '../types/station'
 
-type Station = { index: number; id: string; codes: string[]; name_zh?: string } & Record<string, any>
 type StationWithCoords = Station & { lat: number; lng: number }
 
 const STATION_SOURCE_ID = 'station-points'
