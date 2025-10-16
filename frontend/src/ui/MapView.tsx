@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl, { LngLatLike } from 'maplibre-gl'
 import type { GeoJSONSource, MapLayerMouseEvent } from 'maplibre-gl'
+import workerScriptUrl from 'maplibre-gl/dist/maplibre-gl-csp-worker.js?url'
+
+if (typeof window !== 'undefined' && typeof maplibregl.setWorkerUrl === 'function') {
+  maplibregl.setWorkerUrl(workerScriptUrl)
+}
 
 type Station = { index: number; id: string; codes: string[]; name_zh?: string } & Record<string, any>
 type StationWithCoords = Station & { lat: number; lng: number }
@@ -182,6 +187,8 @@ export function MapView({
         pitchWithRotate: false,
         dragRotate: false,
         canvasContextAttributes: {
+          // Request WebGL1 explicitly and allow the platform to fall back when needed.
+          contextType: 'webgl',
           antialias: true,
           failIfMajorPerformanceCaveat: false,
           powerPreference: 'high-performance'
