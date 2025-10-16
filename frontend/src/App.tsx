@@ -31,30 +31,30 @@ function extractCoords(lines: Line[]): Record<string, { lat: number; lng: number
 
 export default function App() {
   const [lines, setLines] = useState<Line[]>([])
-  const [q, setQ] = useState('')
+  const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<Station | null>(null)
   const [coordsById, setCoordsById] = useState<Record<string, { lat: number; lng: number }>>({})
   const [isExpanded, setIsExpanded] = useState(false)
   const [viewportHeight, setViewportHeight] = useState(() =>
     typeof window === 'undefined' ? 720 : window.innerHeight
   )
-  const isSearching = q.trim().length > 0
+  const isSearching = query.trim().length > 0
   const filtered = useMemo(() => {
     const normalize = (str: string) =>
       (str || '')
         .replace(/\s+/g, '')
         .replace(/臺/g, '台')
-    const query = normalize(q.trim())
-    if (!query) return [] as Station[]
+    const normalizedQuery = normalize(query.trim())
+    if (!normalizedQuery) return [] as Station[]
     const result: Station[] = []
     for (const L of lines) {
       for (const s of L.stations) {
         const hay = normalize([s.id, s.name_zh, ...(s.codes || [])].join(' '))
-        if (hay.includes(query)) result.push(s)
+        if (hay.includes(normalizedQuery)) result.push(s)
       }
     }
     return result
-  }, [q, lines])
+  }, [query, lines])
 
   useEffect(() => {
     let isCancelled = false
@@ -91,13 +91,13 @@ export default function App() {
 
   const handleStationSelect = useCallback((station: Station) => {
     setSelected(station)
-    setQ('')
+    setQuery('')
   }, [])
 
   const handleToggleSheet = useCallback(() => {
     if (!isExpanded) return
     setSelected(null)
-    setQ('')
+    setQuery('')
     setIsExpanded(false)
   }, [isExpanded])
 
@@ -121,9 +121,9 @@ export default function App() {
         <StationSheet
           expanded={isExpanded}
           sheetHeightPx={sheetHeightPx}
-          query={q}
-          onQueryChange={setQ}
-          onClearQuery={() => setQ('')}
+          query={query}
+          onQueryChange={setQuery}
+          onClearQuery={() => setQuery('')}
           panelState={panelState}
           selected={selected}
           results={filtered}
