@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import MapView from './MapView'
 
 type Station = { index: number; id: string; codes: string[]; name_zh?: string }
@@ -180,7 +180,7 @@ type EnrichedEtaItem = EtaItem & { arriveAt: number | null }
 function EtaPanel({ station }: { station: Station }) {
   const [items, setItems] = useState<EnrichedEtaItem[]>([])
   // Ticks every second to force re-render so the countdown decreases.
-  const [tick, setTick] = useState(0)
+  const [, forceRender] = useReducer((x: number) => x + 1, 0)
 
   useEffect(() => {
     let cancelled = false
@@ -212,7 +212,7 @@ function EtaPanel({ station }: { station: Station }) {
     // Poll the API periodically to refresh ETAs and new trains
     const poll = setInterval(load, 15000)
     // Local one-second ticker to decrease displayed seconds
-    const t = setInterval(() => setTick((x) => x + 1), 1000)
+    const t = setInterval(() => forceRender(), 1000)
 
     return () => {
       cancelled = true
