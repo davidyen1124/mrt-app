@@ -38,7 +38,8 @@ export function MapView({
   selected,
   onStationClick,
   styleUrl = 'https://tiles.openfreemap.org/styles/liberty',
-  bottomOffsetPx = 0
+  bottomOffsetPx = 0,
+  viewportHeight
 }: {
   stations: Station[]
   coordsById?: Record<string, { lat: number; lng: number }>
@@ -46,6 +47,7 @@ export function MapView({
   onStationClick: (s: Station) => void
   styleUrl?: string
   bottomOffsetPx?: number
+  viewportHeight?: number
 }) {
   const ref = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<Map | null>(null)
@@ -176,6 +178,10 @@ export function MapView({
       showAccuracyCircle: false
     })
     mapInstance.addControl(geolocate, 'top-right')
+    requestAnimationFrame(() => {
+      if (mapReadyRef.current && mapRef.current) mapRef.current.resize()
+      else mapInstance.resize()
+    })
 
     geolocate.on('geolocate', (e: any) => {
       const { latitude: lat, longitude: lng } = e.coords || {}
@@ -260,6 +266,20 @@ export function MapView({
     }
   }, [styleUrl])
 
+  useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') return
+    const container = ref.current
+    if (!container) return
+    const observer = new ResizeObserver(() => {
+      const map = mapRef.current
+      if (map && mapReadyRef.current) {
+        map.resize()
+      }
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
+
   // Keep GeoJSON source in sync with station coordinates
   useEffect(() => {
     stationGeoJsonRef.current = stationGeoJson
@@ -295,6 +315,13 @@ export function MapView({
       target ? ['==', ['get', 'id'], target] : ['==', ['get', 'id'], '__none__']
     )
   }, [selected])
+
+  useEffect(() => {
+    if (typeof viewportHeight !== 'number') return
+    const map = mapRef.current
+    if (!map || !mapReadyRef.current) return
+    map.resize()
+  }, [viewportHeight])
 
   return <div ref={ref} className="absolute inset-0" />
 }

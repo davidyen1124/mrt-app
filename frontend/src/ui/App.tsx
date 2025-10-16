@@ -101,7 +101,7 @@ export default function App() {
       >
         <h1 className="text-lg font-semibold">台北捷運 Taipei MRT</h1>
       </header>
-      <main className="flex-1 relative overflow-hidden">
+      <main className="flex-1 min-h-0 relative overflow-hidden">
         {/* Interactive map */}
         <MapView
           stations={lines.flatMap(l => l.stations)}
@@ -109,6 +109,7 @@ export default function App() {
           selected={selected}
           onStationClick={handleStationSelect}
           bottomOffsetPx={sheetHeightPx}
+          viewportHeight={viewportHeight}
         />
 
         {/* Bottom sheet (expandable) */}
