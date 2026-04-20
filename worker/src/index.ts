@@ -4,6 +4,8 @@ import { getAssetFromKV, NotFoundError } from '@cloudflare/kv-asset-handler'
 export interface Env {
   __STATIC_CONTENT: KVNamespace
   TAIPEI_ETA_BASE: string
+  TAIPEI_CAR_WEIGHT_USERNAME?: string
+  TAIPEI_CAR_WEIGHT_PASSWORD?: string
 }
 
 type UnknownRecord = Record<string, unknown>
@@ -20,6 +22,28 @@ interface UpstreamEta extends UnknownRecord {
 type EtaWithArrival = UpstreamEta & {
   arriveAt: number | null
 }
+
+type DirectionId = '1' | '2'
+
+interface CarWeightRecord extends UnknownRecord {
+  CID: DirectionId
+  StationID: string
+  Cart1L: string
+  Cart2L: string
+  Cart3L: string
+  Cart4L: string
+  Cart5L: string
+  Cart6L: string
+}
+
+type CarLoadRecommendation = {
+  directionId: DirectionId
+  directionLabel: string
+  carLoads: number[]
+  bestCars: number[]
+}
+
+const CAR_WEIGHT_ENDPOINT = 'https://api.metro.taipei/metroapi/CarWeight.asmx'
 
 const isRecord = (value: unknown): value is UnknownRecord =>
   typeof value === 'object' && value !== null
@@ -65,6 +89,153 @@ const parseEtaToSeconds = (value: unknown): number | null => {
   const numeric = Number(trimmed)
   return Number.isFinite(numeric) ? numeric : null
 }
+
+const stationPrefix = (stationId: string): string => {
+  const match = stationId.trim().toUpperCase().match(/^[A-Z]+/)
+  return match ? match[0] : ''
+}
+
+const stationNumber = (stationId: string): number | null => {
+  const match = stationId.trim().match(/\d+/)
+  if (!match) return null
+  const parsed = Number.parseInt(match[0], 10)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+const directionLabelFor = (stationId: string, directionId: DirectionId): string => {
+  switch (stationPrefix(stationId)) {
+    case 'R':
+      return directionId === '1' ? '往象山' : '往淡水'
+    case 'B':
+    case 'BL':
+      return directionId === '1' ? '往頂埔' : '往南港展覽館'
+    case 'G':
+      return directionId === '1' ? '往新店' : '往松山'
+    case 'O':
+      return directionId === '1' ? '往南勢角' : '往新莊／蘆洲'
+    default:
+      return directionId === '1' ? '方向 1' : '方向 2'
+  }
+}
+
+const isDirectionId = (value: unknown): value is DirectionId =>
+  value === '1' || value === '2'
+
+const normalizeCarWeightRecord = (value: unknown): CarWeightRecord | null => {
+  if (!isRecord(value)) return null
+  const requiredKeys = [
+    'CID',
+    'StationID',
+    'Cart1L',
+    'Cart2L',
+    'Cart3L',
+    'Cart4L',
+    'Cart5L',
+    'Cart6L'
+  ] as const
+
+  for (const key of requiredKeys) {
+    if (typeof value[key] !== 'string') return null
+  }
+
+  if (!isDirectionId(value.CID)) return null
+
+  const record = value as Record<(typeof requiredKeys)[number], string>
+
+  return {
+    ...value,
+    CID: value.CID,
+    StationID: record.StationID,
+    Cart1L: record.Cart1L,
+    Cart2L: record.Cart2L,
+    Cart3L: record.Cart3L,
+    Cart4L: record.Cart4L,
+    Cart5L: record.Cart5L,
+    Cart6L: record.Cart6L
+  }
+}
+
+const extractCarWeightPayload = (rawBody: string): unknown => {
+  const trimmed = rawBody.trim()
+  const jsonEndIndex = trimmed.indexOf('<')
+  const jsonString = jsonEndIndex >= 0 ? trimmed.slice(0, jsonEndIndex).trim() : trimmed
+  return jsonString ? JSON.parse(jsonString) : []
+}
+
+const parseCarLoad = (value: string): number => {
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0
+}
+
+const rankCarLoads = (record: CarWeightRecord) => {
+  const carLoads = [
+    record.Cart1L,
+    record.Cart2L,
+    record.Cart3L,
+    record.Cart4L,
+    record.Cart5L,
+    record.Cart6L
+  ].map(parseCarLoad)
+  const sorted = carLoads
+    .map((loadLevel, index) => ({ car: index + 1, loadLevel }))
+    .sort((a, b) => a.loadLevel - b.loadLevel)
+  const bestPositiveLoad = sorted.find(item => item.loadLevel > 0)?.loadLevel
+  const bestLoad = bestPositiveLoad ?? sorted[0]?.loadLevel ?? 0
+  const bestCars = sorted
+    .filter(item => item.loadLevel === bestLoad)
+    .map(item => item.car)
+
+  return {
+    carLoads,
+    bestCars
+  }
+}
+
+const nearestTrainByDirection = (
+  records: CarWeightRecord[],
+  requestedStationId: string,
+  directionId: DirectionId
+): CarWeightRecord | null => {
+  const requestedPrefix = stationPrefix(requestedStationId)
+  const requestedNumber = stationNumber(requestedStationId)
+  if (!requestedPrefix || requestedNumber == null) return null
+
+  const matchingRecords = records.filter(record => {
+    if (record.CID !== directionId) return false
+    return stationPrefix(record.StationID) === requestedPrefix
+  })
+
+  let bestRecord: CarWeightRecord | null = null
+  let bestDistance = Number.POSITIVE_INFINITY
+
+  for (const record of matchingRecords) {
+    const recordNumber = stationNumber(record.StationID)
+    if (recordNumber == null) continue
+    const isApproaching =
+      directionId === '1' ? recordNumber <= requestedNumber : recordNumber >= requestedNumber
+    if (!isApproaching) continue
+
+    const distance = Math.abs(requestedNumber - recordNumber)
+    if (distance < bestDistance) {
+      bestRecord = record
+      bestDistance = distance
+    }
+  }
+
+  return bestRecord
+}
+
+const buildCarWeightSoapBody = (username: string, password: string): string => `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+<soap:Body>
+<getCarWeightByInfoEx xmlns="http://tempuri.org/">
+<userName>${username}</userName>
+<passWord>${password}</passWord>
+</getCarWeightByInfoEx>
+</soap:Body>
+</soap:Envelope>`
 
 function jsonResponse<T>(obj: T, status = 200): Response {
   return new Response(JSON.stringify(obj), {
@@ -205,6 +376,65 @@ async function handleApi(req: Request, env: Env): Promise<Response> {
           'access-control-allow-origin': '*'
         }
       })
+    }
+  }
+
+  if (pathname === '/api/mrt/taipei/car-load') {
+    const stationId = searchParams.get('stationId')?.trim().toUpperCase()
+    if (!stationId) return jsonResponse({ error: 'stationId required' }, 400)
+
+    const username = env.TAIPEI_CAR_WEIGHT_USERNAME
+    const password = env.TAIPEI_CAR_WEIGHT_PASSWORD
+    if (!username || !password) {
+      return jsonResponse({ error: 'car load API credentials are not configured' }, 503)
+    }
+
+    const upstreamResponse = await fetch(CAR_WEIGHT_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'content-type': 'text/xml; charset=utf-8',
+        'user-agent': 'mrt-app/1.0 (+worker)'
+      },
+      body: buildCarWeightSoapBody(username, password)
+    })
+
+    const rawBody = await upstreamResponse.text()
+    if (!upstreamResponse.ok) {
+      return jsonResponse(
+        { error: 'car load upstream request failed', status: upstreamResponse.status },
+        502
+      )
+    }
+
+    try {
+      const parsed = extractCarWeightPayload(rawBody)
+      const records = Array.isArray(parsed)
+        ? parsed
+            .map(normalizeCarWeightRecord)
+            .filter((record): record is CarWeightRecord => Boolean(record))
+        : []
+
+      const recommendations = (['1', '2'] as const).reduce<CarLoadRecommendation[]>(
+        (acc, directionId) => {
+          const record = nearestTrainByDirection(records, stationId, directionId)
+          if (!record) return acc
+          const ranking = rankCarLoads(record)
+          acc.push({
+            directionId,
+            directionLabel: directionLabelFor(stationId, directionId),
+            ...ranking
+          })
+          return acc
+        },
+        []
+      )
+
+      return jsonResponse({
+        stationId,
+        recommendations
+      })
+    } catch {
+      return jsonResponse({ error: 'could not parse car load upstream response' }, 502)
     }
   }
 

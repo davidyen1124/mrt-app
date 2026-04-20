@@ -1,3 +1,4 @@
+import { useCarLoadRecommendations, type CarLoadRecommendation } from '@/hooks/useCarLoadRecommendations'
 import { useNow } from '@/hooks/useNow'
 import type { Station } from '@/types/station'
 import { useEffect, useState } from 'react'
@@ -117,8 +118,75 @@ const renderEta = (item: EtaItem, now: number) => {
   return minutes === 0 ? `${seconds}秒` : `${minutes}分${seconds}秒`
 }
 
+const loadTone = (level: number) => {
+  if (level <= 1) return 'bg-emerald-500'
+  if (level === 2) return 'bg-amber-400'
+  return 'bg-rose-500'
+}
+
+const normalizeDirectionText = (value: string) =>
+  value
+    .replace(/\s+/g, '')
+    .replace(/臺/g, '台')
+    .replace(/^往/, '')
+    .replace(/方向$/, '')
+    .replace(/站$/, '')
+    .replace(/[／/]/g, '')
+
+const etaDestinationLabel = (item: EtaItem) =>
+  resolveLabel(item.stationName) ??
+  resolveLabel(item.destinationStationName) ??
+  item.destinationStationId ??
+  ''
+
+const matchCarLoadRecommendation = (
+  item: EtaItem,
+  recommendations: CarLoadRecommendation[]
+): CarLoadRecommendation | undefined => {
+  const destinationLabels = [
+    resolveLabel(item.stationName),
+    resolveLabel(item.destinationStationName),
+    item.destinationStationId
+  ]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .map(normalizeDirectionText)
+
+  if (destinationLabels.length === 0) return undefined
+
+  return recommendations.find(recommendation => {
+    const direction = normalizeDirectionText(recommendation.directionLabel)
+    return destinationLabels.some(destination => {
+      if (!destination) return false
+      return direction.includes(destination) || destination.includes(direction)
+    })
+  })
+}
+
+function CarLoadBlocks({ recommendation }: { recommendation: CarLoadRecommendation }) {
+  return (
+    <div className="mt-2 grid grid-cols-6 gap-1">
+      {recommendation.carLoads.map((level, index) => {
+        const car = index + 1
+        const isBest = recommendation.bestCars.includes(car)
+        return (
+          <div
+            key={car}
+            className={`flex h-7 items-center justify-center rounded-md text-xs font-semibold text-white ${loadTone(level)} ${
+              isBest ? 'ring-2 ring-emerald-900 ring-offset-1' : ''
+            }`}
+            aria-label={`${car} 車廂負載 ${level}`}
+          >
+            {car}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function EtaPanel({ station }: EtaPanelProps) {
   const [items, setItems] = useState<EtaItem[]>([])
+  const carLoadRecommendations = useCarLoadRecommendations(station.id)
   const now = useNow()
 
   useEffect(() => {
@@ -149,20 +217,27 @@ export default function EtaPanel({ station }: EtaPanelProps) {
     <div className="border rounded-lg p-3">
       <div className="font-semibold text-base">{station.name_zh}</div>
       <ul className="mt-2 divide-y">
-        {items.map((item, index) => (
-          <li key={index} className="py-2 flex items-center justify-between">
-            <div className="text-sm truncate">
-              {resolveLabel(item.routeName) ?? '路線'}
-              <span className="mx-1">→</span>
-              {resolveLabel(item.stationName) ??
-                resolveLabel(item.destinationStationName) ??
-                item.destinationStationId ??
-                ''}
-            </div>
-            <div className="text-sm font-medium whitespace-nowrap">{renderEta(item, now)}</div>
+        {items.map((item, index) => {
+          const carLoad = matchCarLoadRecommendation(item, carLoadRecommendations)
+          return (
+            <li key={index} className="py-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 truncate text-sm">
+                  {resolveLabel(item.routeName) ?? '路線'}
+                  <span className="mx-1">→</span>
+                  {etaDestinationLabel(item)}
+                </div>
+                <div className="shrink-0 text-sm font-medium whitespace-nowrap">{renderEta(item, now)}</div>
+              </div>
+              {carLoad && <CarLoadBlocks recommendation={carLoad} />}
+            </li>
+          )
+        })}
+        {!items.length && (
+          <li className="py-6 text-center text-sm text-gray-500">
+            尚無即時資訊
           </li>
-        ))}
-        {!items.length && <li className="py-6 text-center text-gray-500 text-sm">尚無即時資訊</li>}
+        )}
       </ul>
     </div>
   )

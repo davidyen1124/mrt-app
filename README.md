@@ -35,8 +35,10 @@ Wrangler login happens outside this README. If you skipped that, enjoy reading e
 - `GET /api/health` – heartbeat check. If this fails, the apocalypse is now.
 - `GET /api/mrt/taipei/stations` – returns station metadata complete with coordinates. Reads straight from `data/taipei_stations_combined.json`, so maybe don't rename fields on a whim.
 - `GET /api/mrt/taipei/eta?stationId=<id>` – upstream ETA proxy that sprinkles in `arriveAt` timestamps. Think of it as customer service for trains.
+- `GET /api/mrt/taipei/car-load?stationId=<id>` – Taipei Metro car-load proxy. It ranks cars 1-6 and sends back the best boarding spots before your legs file a complaint.
 
 Environment override? Set `TAIPEI_ETA_BASE` in Wrangler and hope you know what you're doing.
+Car-load data needs Taipei Metro credentials in Worker secrets: `TAIPEI_CAR_WEIGHT_USERNAME` and `TAIPEI_CAR_WEIGHT_PASSWORD`.
 
 ## Data Drama
 - Schema expects `id`, `codes`, `name_zh`, `lat`, `lng`. Break it and the UI will throw a tantrum.
