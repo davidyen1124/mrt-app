@@ -270,7 +270,12 @@ export default function MapView(props: MapViewProps) {
       const timeMode = Boolean(current.travelMinutes)
       map.setLayoutProperty('mrt-time-labels', 'visibility', timeMode ? 'visible' : 'none')
       map.setLayoutProperty('mrt-labels', 'visibility', timeMode ? 'none' : 'visible')
-      map.setFilter('mrt-selected-label', ['==', ['get', 'id'], current.selected?.id ?? '__none__'])
+      // The selected station is labelled only by the highlighted layer; drawing it in the regular layers too
+      // stacked two copies of the same name.
+      const selectedId = current.selected?.id ?? '__none__'
+      map.setFilter('mrt-selected-label', ['==', ['get', 'id'], selectedId])
+      map.setFilter('mrt-labels', ['!=', ['get', 'id'], selectedId])
+      map.setFilter('mrt-time-labels', ['all', ['has', 'minutes'], ['!=', ['get', 'id'], selectedId]])
     }
 
     const onStationClickHandler = (event: MapLayerMouseEvent) => {
