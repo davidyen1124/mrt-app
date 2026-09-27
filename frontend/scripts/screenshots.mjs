@@ -3,7 +3,7 @@
 //
 //   node scripts/screenshots.mjs [baseUrl] [outDir]
 //
-// Uses the locally installed Chrome. Screens are taken at iPhone 15 Pro size (393×852 @3x) plus one desktop view.
+// Uses the locally installed Chrome. Phone screens are iPhone 15 Pro size (393×852 @2x); desktop is 1440×900 @2x.
 
 import { chromium, devices } from '@playwright/test'
 import { mkdir } from 'node:fs/promises'
@@ -13,7 +13,7 @@ const base = process.argv[2] ?? 'http://localhost:8787'
 const out = resolve(process.argv[3] ?? '../docs/screenshots')
 const only = process.env.SHOTS?.split(',')
 
-const phone = { ...devices['iPhone 15 Pro'], locale: 'zh-TW', timezoneId: 'Asia/Taipei' }
+const phone = { ...devices['iPhone 15 Pro'], deviceScaleFactor: 2, locale: 'zh-TW', timezoneId: 'Asia/Taipei' }
 delete phone.defaultBrowserType
 
 const SHOTS = [
@@ -66,7 +66,7 @@ for (const shot of SHOTS) {
   await settle(page)
   await shot.setup(page)
   await page.waitForTimeout(900)
-  await page.screenshot({ path: `${out}/${shot.name}.png` })
+  await page.screenshot({ path: `${out}/${shot.name}.jpg`, type: 'jpeg', quality: 84 })
   console.log(`captured ${shot.name}`)
   await context.close()
 }
