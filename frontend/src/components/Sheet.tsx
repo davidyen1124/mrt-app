@@ -79,7 +79,7 @@ export default function Sheet({ desktop, snap, onSnapChange, onVisibleHeight, pe
     return (
       <aside className="pointer-events-auto absolute top-3 bottom-3 left-3 z-20 flex w-[400px] flex-col overflow-hidden rounded-[var(--radius-sheet)] bg-surface shadow-[var(--shadow-float)] ring-1 ring-hairline">
         <div className="shrink-0 px-4 pt-4">{header}</div>
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-6">
           {children}
         </div>
       </aside>
@@ -156,7 +156,7 @@ export default function Sheet({ desktop, snap, onSnapChange, onVisibleHeight, pe
       </div>
       <div
         ref={scrollRef}
-        className="min-h-0 overflow-y-auto overscroll-contain px-4"
+        className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain px-4"
         style={{
           paddingBottom: `calc(env(safe-area-inset-bottom) + 24px)`,
           // Size the scroller to the resting height so everything is reachable at every snap point.

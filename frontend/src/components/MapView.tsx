@@ -48,6 +48,8 @@ type MapViewProps = {
   selected: Station | null
   focusLine: Line | null
   travelMinutes: Map<string, number> | null
+  /** Fares tab is open: frame the whole network. Independent of travelMinutes, which is null while loading. */
+  timeMode: boolean
   user: { lat: number; lng: number } | null
   followUser: number
   insets: MapInsets
@@ -99,7 +101,7 @@ const stationFeatures = (lang: Lang, minutes: Map<string, number> | null) => ({
 })
 
 export default function MapView(props: MapViewProps) {
-  const { dark, lang, selected, focusLine, travelMinutes, user, followUser, insets, onStationClick, onBackgroundClick } = props
+  const { dark, lang, selected, focusLine, travelMinutes, timeMode, user, followUser, insets, onStationClick, onBackgroundClick } = props
   const container = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapInstance | null>(null)
   const readyRef = useRef(false)
@@ -137,13 +139,25 @@ export default function MapView(props: MapViewProps) {
       const current = latest.current
       const colors = current.dark ? THEME.dark : THEME.light
       for (const layer of map.getStyle().layers ?? []) {
-        // Our station names are the only text on the map: basemap road, place and POI labels (and its own
-        // copies of station names) sat right under ours and made both hard to read.
-        if (layer.type === 'symbol') map.setLayoutProperty(layer.id, 'visibility', 'none')
         // Our own line geometry replaces the basemap's subway tracks.
-        else if (layer.id.startsWith('railway_transit')) map.setLayoutProperty(layer.id, 'visibility', 'none')
+        if (layer.id.startsWith('railway_transit')) {
+          map.setLayoutProperty(layer.id, 'visibility', 'none')
+          continue
+        }
         // Keep TRA/HSR tracks as quiet context under the metro lines.
-        else if (layer.type === 'line' && layer.id.startsWith('railway')) map.setPaintProperty(layer.id, 'line-opacity', 0.35)
+        if (layer.type === 'line' && layer.id.startsWith('railway')) {
+          map.setPaintProperty(layer.id, 'line-opacity', 0.35)
+          continue
+        }
+        if (layer.type !== 'symbol') continue
+        // City/country names sit on top of the whole network at overview zoom; finer place names stay, softened.
+        if (/^(label_city|label_state|label_country|place_city|place_state|place_country)/.test(layer.id)) {
+          map.setLayoutProperty(layer.id, 'visibility', 'none')
+        } else if (/^(label_|place_)/.test(layer.id)) {
+          map.setPaintProperty(layer.id, 'text-opacity', 0.7)
+          // Neighbourhood names only once the map is close enough for them to be useful.
+          if (/(other|village|suburb)$/.test(layer.id)) map.setLayerZoomRange(layer.id, 13, 24)
+        }
       }
       if (!map.getSource('mrt-lines')) map.addSource('mrt-lines', { type: 'geojson', data: lineFeatures() })
       if (!map.getSource('mrt-stations')) {
@@ -159,20 +173,22 @@ export default function MapView(props: MapViewProps) {
         15, ['*', 7 * scale, branchFactor],
         18, ['*', 12 * scale, branchFactor]
       ]
+      // Lines go under the basemap's labels (street names stay readable); stations and their names go on top.
+      const firstBasemapLabel = map.getStyle().layers?.find(layer => layer.type === 'symbol' && !layer.id.startsWith('mrt-'))?.id
       map.addLayer({
         id: 'mrt-lines-casing',
         type: 'line',
         source: 'mrt-lines',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: { 'line-color': colors.casing, 'line-width': width(1.9), 'line-opacity': 0.9 }
-      })
+      }, firstBasemapLabel)
       map.addLayer({
         id: 'mrt-lines',
         type: 'line',
         source: 'mrt-lines',
         layout: { 'line-cap': 'round', 'line-join': 'round', 'line-sort-key': ['-', 0, ['get', 'branch']] },
         paint: { 'line-color': ['get', 'color'], 'line-width': width(1) }
-      })
+      }, firstBasemapLabel)
       map.addLayer({
         id: 'mrt-stations',
         type: 'circle',
@@ -217,8 +233,7 @@ export default function MapView(props: MapViewProps) {
             'text-font': ['Noto Sans Bold'],
             'text-size': ['interpolate', ['linear'], ['zoom'], 10, 10.5, 14, 13],
             'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
-            'text-radial-offset': 0.8,
-            visibility: 'none'
+            'text-radial-offset': 0.8
           }
         })
       )
@@ -232,18 +247,33 @@ export default function MapView(props: MapViewProps) {
             'text-size': 15,
             'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
             'text-radial-offset': 1.35,
-            'text-allow-overlap': true,
-            'text-ignore-placement': true
+            'text-allow-overlap': true
           },
           paint: { 'text-halo-width': 2.2 }
         })
       )
       const firstLoad = !readyOnce
       readyOnce = true
+      // Invisible, always-placed marker on every station: reserves the dot's space so basemap street and
+      // place names are laid out around stations instead of underneath them.
+      map.addLayer({
+        id: 'mrt-station-space',
+        type: 'symbol',
+        source: 'mrt-stations',
+        minzoom: 11,
+        layout: {
+          'text-field': 'O',
+          'text-font': ['Noto Sans Regular'],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 11, 12, 15, 22, 18, 28],
+          'text-allow-overlap': true,
+          'text-padding': 1
+        },
+        paint: { 'text-opacity': 0 }
+      })
       readyRef.current = true
       applyState()
       // Deep links arrive before the map is ready; jump straight to the selection on first load.
-      if (firstLoad && current.selected && !current.travelMinutes) {
+      if (firstLoad && current.selected && !current.timeMode) {
         map.jumpTo({ center: mapPosition(current.selected), zoom: 14.5, padding: paddingFor(current.insets) })
       }
       if (firstLoad) {
@@ -267,14 +297,12 @@ export default function MapView(props: MapViewProps) {
       map.setPaintProperty('mrt-stations', 'circle-opacity', stationOpacity)
       map.setPaintProperty('mrt-stations', 'circle-stroke-opacity', stationOpacity)
       map.setPaintProperty('mrt-labels', 'text-opacity', stationOpacity)
-      const timeMode = Boolean(current.travelMinutes)
-      map.setLayoutProperty('mrt-time-labels', 'visibility', timeMode ? 'visible' : 'none')
-      map.setLayoutProperty('mrt-labels', 'visibility', timeMode ? 'none' : 'visible')
       // The selected station is labelled only by the highlighted layer; drawing it in the regular layers too
       // stacked two copies of the same name.
       const selectedId = current.selected?.id ?? '__none__'
       map.setFilter('mrt-selected-label', ['==', ['get', 'id'], selectedId])
-      map.setFilter('mrt-labels', ['!=', ['get', 'id'], selectedId])
+      // Stations with a travel time (fares tab) use the time layer; everything else keeps its plain name.
+      map.setFilter('mrt-labels', ['all', ['!', ['has', 'minutes']], ['!=', ['get', 'id'], selectedId]])
       map.setFilter('mrt-time-labels', ['all', ['has', 'minutes'], ['!=', ['get', 'id'], selectedId]])
     }
 
@@ -356,7 +384,6 @@ export default function MapView(props: MapViewProps) {
 
   // Camera: one effect decides what to frame, and re-frames it whenever the sheet changes the padding.
   // (Separate padding-only eases would cancel an in-flight fitBounds.)
-  const timeMode = Boolean(travelMinutes)
   const cameraKey = `${selected?.id ?? ''}|${focusLine?.id ?? ''}|${timeMode}`
   const lastCameraKey = useRef<string | null>(null)
   useEffect(() => {

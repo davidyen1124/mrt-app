@@ -1,10 +1,28 @@
-import { StationCodes } from '@/components/Badges'
+import { CodeColumn } from '@/components/Badges'
 import { SearchIcon } from '@/components/Icons'
 import { findStation, searchStations, stationName, type Station } from '@/data/network'
 import type { Fare } from '@/hooks/useLiveData'
 import type { Polled } from '@/hooks/usePolling'
 import { useStrings } from '@/lib/i18n'
 import { useMemo, useState } from 'react'
+
+// Codes | name | adult | concession. Shared by the header and every row so the columns always line up.
+const FARE_GRID = 'grid grid-cols-[45px_minmax(0,1fr)_56px_64px] items-center gap-x-3'
+
+function Price({ value, className }: { value: number | null; className: string }) {
+  return (
+    <span className="tabular text-right whitespace-nowrap">
+      {value == null ? (
+        <span className="text-ink-3">—</span>
+      ) : (
+        <>
+          <span className="mr-0.5 text-[11px] font-semibold text-ink-3">NT$</span>
+          <span className={className}>{value}</span>
+        </>
+      )}
+    </span>
+  )
+}
 
 export default function FaresTab({ fares, onSelect }: { fares: Polled<Fare[]>; onSelect: (station: Station) => void }) {
   const { t, lang } = useStrings()
@@ -34,9 +52,10 @@ export default function FaresTab({ fares, onSelect }: { fares: Polled<Fare[]>; o
           aria-label={t.faresFilter}
         />
       </label>
-      <div className="flex justify-end gap-6 px-2 pb-1 text-[11px] font-semibold tracking-[0.06em] text-ink-3 uppercase">
-        <span>{t.fareFull}</span>
-        <span className="w-9 text-right">{t.fareConcession}</span>
+      <div className={`${FARE_GRID} px-2 pt-1 pb-1.5 text-[12px] font-semibold text-ink-3`}>
+        <span className="col-span-2">{t.faresDestination}</span>
+        <span className="text-right whitespace-nowrap">{t.fareFull}</span>
+        <span className="text-right whitespace-nowrap">{t.fareConcession}</span>
       </div>
       <ul className="-mx-2">
         {rows.map(({ fare, station }) => (
@@ -44,18 +63,15 @@ export default function FaresTab({ fares, onSelect }: { fares: Polled<Fare[]>; o
             <button
               type="button"
               onClick={() => onSelect(station)}
-              className="flex min-h-[54px] w-full items-center gap-3 rounded-[12px] px-2 py-1.5 text-left transition hover:bg-surface-2"
+              className={`${FARE_GRID} min-h-[56px] w-full rounded-[12px] px-2 py-1.5 text-left transition hover:bg-surface-2`}
             >
-              <StationCodes station={station} size="sm" />
-              <span className="min-w-0 flex-1">
+              <CodeColumn station={station} />
+              <span className="min-w-0">
                 <span className="block truncate text-[15px] font-semibold">{stationName(station, lang)}</span>
                 <span className="tabular block text-[12px] text-ink-3">{t.travelTime(fare.minutes)}</span>
               </span>
-              <span className="tabular text-[17px] font-bold">
-                <span className="mr-0.5 text-[11px] font-semibold text-ink-3">NT$</span>
-                {fare.fare}
-              </span>
-              <span className="tabular w-9 text-right text-[13px] font-semibold text-ink-3">{fare.concession ?? '—'}</span>
+              <Price value={fare.fare} className="text-[17px] font-bold text-ink" />
+              <Price value={fare.concession} className="text-[15px] font-semibold text-ink-2" />
             </button>
           </li>
         ))}

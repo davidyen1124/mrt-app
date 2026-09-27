@@ -183,6 +183,7 @@ export default function App() {
           selected={station}
           focusLine={line}
           travelMinutes={travelMinutes}
+          timeMode={Boolean(station) && tab === 'fares'}
           user={geo.status === 'ready' ? geo : null}
           followUser={followUser}
           insets={insets}

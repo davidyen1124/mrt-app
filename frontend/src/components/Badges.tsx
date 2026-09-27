@@ -47,6 +47,18 @@ export function StationCodes({ station, size = 'md' }: { station: Station; size?
   )
 }
 
+/**
+ * Fixed-width slot for a station's small code badges (fits two), so names in lists start at the same x
+ * whether a station has one code or two.
+ */
+export function CodeColumn({ station }: { station: Station }) {
+  return (
+    <span className="flex w-[45px] shrink-0 items-center">
+      <StationCodes station={station} size="sm" />
+    </span>
+  )
+}
+
 /** Solid line chip, e.g. [BL]. Branches carry their parent code with a small "A". */
 export function LineMark({ line, size = 'md' }: { line: Line; size?: 'sm' | 'md' | 'lg' }) {
   const box =

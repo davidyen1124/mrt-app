@@ -1,4 +1,4 @@
-import { StationCodes } from '@/components/Badges'
+import { CodeColumn } from '@/components/Badges'
 import { ChevronRight } from '@/components/Icons'
 import { stationName, type Station } from '@/data/network'
 import { useStrings } from '@/lib/i18n'
@@ -20,7 +20,7 @@ export default function StationRow({ station, onSelect, trailing, meta }: Statio
       onClick={() => onSelect(station)}
       className="group flex min-h-[60px] w-full items-center gap-3 rounded-[14px] px-2 py-2 text-left transition hover:bg-surface-2 active:bg-surface-3"
     >
-      <StationCodes station={station} size="sm" />
+      <CodeColumn station={station} />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-[16px] font-semibold tracking-[0.01em]">{stationName(station, lang)}</span>
         <span className="truncate text-[12.5px] text-ink-3">{meta ?? secondary}</span>
