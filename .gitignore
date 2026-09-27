@@ -28,3 +28,7 @@ Thumbs.db
 # Playwright
 test-results/
 playwright-report/
+
+# Local Worker secrets (wrangler dev)
+.dev.vars
+.dev.vars.*
