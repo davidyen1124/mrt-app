@@ -22,7 +22,7 @@ Live arrivals, car crowding, first/last trains, fares and station facilities for
 | **Travel-time map** | Open **票價** and the map relabels every station with minutes from where you are, next to adult and concession fares for all 118 destinations. |
 | **First & last trains** | Weekday first/last departures per direction, with a `末班車 23 分後` warning in the last 90 minutes of service. |
 | **Station details** | Restrooms, information desks, lockers and bicycle rules, split by line at transfer stations. Platform-sign plates show the previous and next station on each line. |
-| **Real track geometry** | Lines are drawn from OpenStreetMap in official colours over a label-free light/dark basemap, so station names are the only text on the map. Station dots sit on the track, and at the exact crossing for transfers. Focusing a line fades the rest of the network. |
+| **Real track geometry** | Lines are drawn from OpenStreetMap in official colours over a quiet light/dark basemap, beneath its street names. Station names always take priority, and no street name can sit under a station dot. Dots sit on the track, and transfers sit at the exact crossing. Focusing a line fades the rest of the network. |
 | **Find anything** | Search by Chinese name, station code (`bl14`) or English (`xinsheng`), browse line strips with branches, find the nearest stations with walking times, pin favourites. |
 | **Built for phones** | Three-stop draggable sheet with velocity snapping, safe-area aware, installable PWA, deep links for every station, tab and line (`/station/R10/fares`, `/line/O`). Floating side panel on desktop. |
 | **Two languages, two themes** | 中文 / English in one tap; light and dark follow the system. |
