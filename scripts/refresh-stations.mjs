@@ -90,14 +90,18 @@ function buildStations(feed, overrides) {
     const lng = group.reduce((sum, record) => sum + record.longitude, 0) / group.length
 
     const facility = field => {
+      const texts = group.map(record => clean(record[field]))
+      // Most transfer stations repeat the same text under every line; only label rows by line when the
+      // lines genuinely differ (板橋: separate BL and Y concourses).
+      const differs = new Set(texts).size > 1
       const seen = new Set()
       const rows = []
-      for (const record of group) {
-        const text = clean(record[field])
-        if (!text || seen.has(text)) continue
+      group.forEach((record, index) => {
+        const text = texts[index]
+        if (!text || seen.has(text)) return
         seen.add(text)
-        rows.push({ line: group.length > 1 ? record.lineId : undefined, text })
-      }
+        rows.push(differs ? { line: record.lineId, text } : { text })
+      })
       return rows
     }
 
