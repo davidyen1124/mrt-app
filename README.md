@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/public/icon.svg" width="72" alt="北捷即時 app icon" />
+<img src="frontend/public/icon-512.png" width="88" alt="北捷即時 app icon" />
 
 # 北捷即時 · Taipei Metro Live
 
@@ -58,6 +58,10 @@ quality bar. What carried over:
   borrow from station name boards, an idea 軌島 does beautifully with its enamel signs.
 - **Neutral chrome.** Line colours are the only saturated hues. Tokens live in `frontend/src/index.css`, and the dark
   theme is a full token swap rather than an inversion.
+- **Brand art by Codex.** The 捷 app icon and the social card were generated with the Codex CLI `imagegen` skill
+  (built-in `image_gen`, text rendered in-image and checked glyph by glyph). The sources live in
+  [`frontend/art/`](frontend/art), with two runner-up icon concepts in `frontend/art/concepts/`. `npm run icons`
+  derives every favicon, PWA icon and `og.png` from them.
 - **Crowding in the row.** Crowding sits in the arrival row instead of behind an extra tap (from 台北捷運倒數), and the
   app says where its live data comes from.
 
@@ -133,7 +137,7 @@ Data and assets:
 ```bash
 node scripts/refresh-stations.mjs              # Bus+ feed → data/taipei_network.json + taipei_fares.json
 node scripts/refresh-geometry.mjs              # OSM → data/taipei_lines.geo.json
-cd frontend && npm run icons                   # app icons + og.png from the SVG mark and real geometry
+cd frontend && npm run icons                   # favicons, PWA icons and og.png from frontend/art/ (Codex imagegen)
 cd frontend && npm run screenshots -- https://mrt-app.davidyen1124.workers.dev ../docs/screenshots
 ```
 
