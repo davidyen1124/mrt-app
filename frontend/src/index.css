@@ -4,8 +4,8 @@
 @source "./**/*.{ts,tsx}";
 
 /*
- * Design tokens. Surfaces and ink flip with the colour scheme; the departure board stays dark in both
- * themes, like the platform displays it is modelled on. Line colours come from data at runtime.
+ * Design tokens. Everything flips with the colour scheme, including the departure board. Line colours come
+ * from data at runtime.
  */
 @theme {
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC",
@@ -20,10 +20,11 @@
   --color-ink-3: var(--ink-3);
   --color-hairline: var(--hairline);
   --color-board: var(--board);
-  --color-board-2: var(--board-2);
   --color-board-ink: var(--board-ink);
   --color-board-dim: var(--board-dim);
+  --color-board-line: var(--board-line);
   --color-amber: var(--amber);
+  --color-amber-ink: var(--amber-ink);
   --color-live: var(--live);
   --color-accent: var(--accent);
   --color-on-accent: var(--on-accent);
@@ -48,11 +49,19 @@
     --ink-2: #4b525c;
     --ink-3: #8a909a;
     --hairline: rgb(17 20 24 / 0.09);
-    --board: #13171c;
-    --board-2: #1d232a;
-    --board-ink: #f6f2e7;
-    --board-dim: #8e96a1;
+    --board: var(--surface-2);
+    --board-ink: var(--ink);
+    --board-dim: #666d77; /* 4.8:1 on the board, for the small secondary labels */
+    --board-line: var(--hairline);
     --amber: #ffb224;
+    /* Amber as text needs to be darker on light surfaces (≥ 4.5:1 on #f5f5f3). */
+    --amber-ink: #a35400;
+    /* Car crowding levels 1–4, tuned to read on the light board. */
+    --load-1: #2dbd5a;
+    --load-2: #f2c300;
+    --load-3: #ff8f00;
+    --load-4: #f0453a;
+    --load-empty: rgb(17 20 24 / 0.1);
     --live: #1fa855;
     --accent: #111418;
     --on-accent: #ffffff;
@@ -70,10 +79,16 @@
       --ink-2: #b7bdc6;
       --ink-3: #7f8792;
       --hairline: rgb(255 255 255 / 0.09);
-      --board: #0a0c0f;
-      --board-2: #151a20;
+      --board: #0f1216;
       --board-ink: #f6f2e7;
       --board-dim: #7f8792;
+      --board-line: rgb(255 255 255 / 0.07);
+      --amber-ink: #ffb224;
+      --load-1: #30d158;
+      --load-2: #ffd60a;
+      --load-3: #ff9f0a;
+      --load-4: #ff453a;
+      --load-empty: rgb(255 255 255 / 0.15);
       --accent: #f2f3f5;
       --on-accent: #111418;
       --glass: rgb(22 25 30 / 0.84);

@@ -1,5 +1,6 @@
 import networkJson from '@data/taipei_network.json'
 import linesGeoJson from '@data/taipei_lines.geo.json'
+import { snapToLines, type LineParts, type LngLat } from '@/data/snap'
 import type { FeatureCollection, LineString, MultiLineString } from 'geojson'
 
 export type Lang = 'zh' | 'en'
@@ -45,6 +46,26 @@ export const networkMeta = data.meta
 export const lines: Line[] = data.lines
 export const stations: Station[] = data.stations
 export const lineGeometry = linesGeoJson as unknown as FeatureCollection<LineString | MultiLineString, { line: string }>
+
+const partsByLine = new Map<string, LineParts>()
+for (const feature of lineGeometry.features) {
+  const parts = feature.geometry.type === 'LineString' ? [feature.geometry.coordinates] : feature.geometry.coordinates
+  partsByLine.set(feature.properties.line, [...(partsByLine.get(feature.properties.line) ?? []), ...(parts as LineParts)])
+}
+
+// Feed coordinates mark the station building; draw stations on the track instead (see snap.ts).
+const mapPositions = new Map<string, LngLat>(
+  stations.map(station => [
+    station.id,
+    snapToLines(
+      [station.lng, station.lat],
+      station.lines.map(line => partsByLine.get(line) ?? [])
+    )
+  ])
+)
+
+/** Where a station is drawn on the map: on its line, or at the crossing of its lines. */
+export const mapPosition = (station: Station): LngLat => mapPositions.get(station.id) ?? [station.lng, station.lat]
 
 const stationByCode = new Map<string, Station>()
 for (const station of stations) for (const code of station.codes) stationByCode.set(code, station)

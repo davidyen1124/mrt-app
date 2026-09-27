@@ -48,7 +48,7 @@ export default function TimetableTab({ station }: { station: Station }) {
                           {destination ? stationName(destination, lang) : departure.to}
                         </span>
                         {lastSoon ? (
-                          <span className="shrink-0 rounded-full bg-amber/20 px-2 py-0.5 text-[11.5px] font-bold text-[#9a5b00] dark:text-amber">
+                          <span className="shrink-0 rounded-full bg-amber/20 px-2 py-0.5 text-[11.5px] font-bold text-amber-ink">
                             {t.lastTrainIn(minutesToLast!)}
                           </span>
                         ) : null}

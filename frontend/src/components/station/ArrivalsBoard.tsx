@@ -43,8 +43,8 @@ function Countdown({ arrival, now }: { arrival: Arrival; now: number }) {
   const value = arrival.status === 'arriving' ? ({ kind: 'arriving' } as const) : countdown(arrival.arriveAt, now)
   if (value.kind === 'arriving') {
     return (
-      <span className="flex items-center gap-1.5 text-[17px] font-extrabold text-amber">
-        <span className="animate-live h-2 w-2 rounded-full bg-amber" />
+      <span className="flex items-center gap-1.5 text-[17px] font-extrabold text-amber-ink">
+        <span className="animate-live h-2 w-2 rounded-full bg-amber-ink" />
         {t.arriving}
       </span>
     )
@@ -58,7 +58,7 @@ function Countdown({ arrival, now }: { arrival: Arrival; now: number }) {
     )
   }
   return (
-    <span className={`tabular text-[30px] leading-none font-bold tracking-[-0.02em] ${value.kind === 'imminent' ? 'text-amber' : 'text-board-ink'}`}>
+    <span className={`tabular text-[30px] leading-none font-bold tracking-[-0.02em] ${value.kind === 'imminent' ? 'text-amber-ink' : 'text-board-ink'}`}>
       {value.text}
     </span>
   )
@@ -82,7 +82,7 @@ function DirectionGroup({ station, line, direction, arrivals, carLoad, now }: {
     ended || !arrivals.length || live.length > 1 || ends.length > 1 || live[0]?.destination.stationId !== ends[0]?.id
 
   return (
-    <div className="border-t border-white/[0.07] px-4 py-2.5 first:border-0">
+    <div className="border-t border-board-line px-4 py-2.5 first:border-0">
       {showCaption ? (
         <div className="text-[11px] font-semibold tracking-[0.08em] text-board-dim uppercase">
           <span className="truncate">
@@ -130,15 +130,15 @@ function DirectionGroup({ station, line, direction, arrivals, carLoad, now }: {
 
 function SkeletonCard() {
   return (
-    <div className="overflow-hidden rounded-[18px] bg-board p-4">
-      <div className="h-4 w-28 animate-pulse rounded bg-white/10" />
+    <div className="overflow-hidden rounded-[18px] bg-board p-4 ring-1 ring-hairline">
+      <div className="h-4 w-28 animate-pulse rounded bg-ink/10" />
       <div className="mt-4 flex items-center justify-between">
-        <div className="h-5 w-40 animate-pulse rounded bg-white/10" />
-        <div className="h-7 w-14 animate-pulse rounded bg-white/10" />
+        <div className="h-5 w-40 animate-pulse rounded bg-ink/10" />
+        <div className="h-7 w-14 animate-pulse rounded bg-ink/10" />
       </div>
       <div className="mt-3 flex items-center justify-between">
-        <div className="h-5 w-32 animate-pulse rounded bg-white/10" />
-        <div className="h-7 w-14 animate-pulse rounded bg-white/10" />
+        <div className="h-5 w-32 animate-pulse rounded bg-ink/10" />
+        <div className="h-7 w-14 animate-pulse rounded bg-ink/10" />
       </div>
     </div>
   )
@@ -171,8 +171,9 @@ export default function ArrivalsBoard({ station, arrivals, carLoads }: ArrivalsB
         if (line.branchOf && !forLine.length && !station.codes.includes(line.stations[line.stations.length - 1])) return null
         const directions = DIRECTIONS.filter(direction => terminalsToward(station, line, direction).length > 0)
         return (
-          <article key={line.id} className="animate-rise overflow-hidden rounded-[18px] bg-board text-board-ink shadow-[0_1px_0_rgb(255_255_255/0.04)_inset]">
-            <header className="flex items-center gap-2.5 px-4 pt-3.5 pb-2">
+          <article key={line.id} className="animate-rise relative overflow-hidden rounded-[18px] bg-board text-board-ink ring-1 ring-hairline">
+            <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: line.color }} aria-hidden="true" />
+            <header className="flex items-center gap-2.5 px-4 pt-4 pb-2">
               <LineMark line={line} size="sm" />
               <span className="text-[14.5px] font-bold">{lineName(line, lang)}</span>
               <span className="truncate text-[12px] text-board-dim">{lang === 'zh' ? line.name.en : line.name.zh}</span>

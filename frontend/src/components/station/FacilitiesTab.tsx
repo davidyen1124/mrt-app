@@ -16,13 +16,14 @@ function Card({ icon, title, rows }: { icon: ReactNode; title: string; rows: Fac
         {rows.map(row => {
           const line = row.line ? findLine(row.line) : undefined
           return (
-            <li key={`${row.line}-${row.text}`} className="flex gap-2">
+            <li key={`${row.line}-${row.text}`} className="flex items-start gap-2">
               {line ? (
-                <span className="pt-[3px]">
+                // Same height as one text line, so the tag centres on the first line of a multi-line entry.
+                <span className="flex h-[22px] shrink-0 items-center">
                   <LineMark line={line} size="sm" />
                 </span>
               ) : null}
-              <p className="text-[14px] leading-relaxed whitespace-pre-line text-ink-2">{row.text}</p>
+              <p className="text-[14px] leading-[22px] whitespace-pre-line text-ink-2">{row.text}</p>
             </li>
           )
         })}

@@ -3,6 +3,7 @@ import {
   isTransfer,
   lineGeometry,
   lines,
+  mapPosition,
   primaryLine,
   stations,
   type Lang,
@@ -82,7 +83,7 @@ const stationFeatures = (lang: Lang, minutes: Map<string, number> | null) => ({
     return {
       type: 'Feature' as const,
       id: stations.indexOf(station),
-      geometry: { type: 'Point' as const, coordinates: [station.lng, station.lat] },
+      geometry: { type: 'Point' as const, coordinates: mapPosition(station) },
       properties: {
         id: station.id,
         name: lang === 'en' ? station.name.en || station.name.zh : station.name.zh,
@@ -136,19 +137,13 @@ export default function MapView(props: MapViewProps) {
       const current = latest.current
       const colors = current.dark ? THEME.dark : THEME.light
       for (const layer of map.getStyle().layers ?? []) {
+        // Our station names are the only text on the map: basemap road, place and POI labels (and its own
+        // copies of station names) sat right under ours and made both hard to read.
+        if (layer.type === 'symbol') map.setLayoutProperty(layer.id, 'visibility', 'none')
         // Our own line geometry replaces the basemap's subway tracks.
-        if (layer.id.startsWith('railway_transit')) map.setLayoutProperty(layer.id, 'visibility', 'none')
+        else if (layer.id.startsWith('railway_transit')) map.setLayoutProperty(layer.id, 'visibility', 'none')
         // Keep TRA/HSR tracks as quiet context under the metro lines.
         else if (layer.type === 'line' && layer.id.startsWith('railway')) map.setPaintProperty(layer.id, 'line-opacity', 0.35)
-        // City names sit right on top of the network at overview zoom; keep only finer place names.
-        if (layer.type !== 'symbol') continue
-        if (/^(label_city|label_state|label_country|place_city|place_state|place_country)/.test(layer.id)) {
-          map.setLayoutProperty(layer.id, 'visibility', 'none')
-        } else if (/^(label_|place_)/.test(layer.id)) {
-          map.setPaintProperty(layer.id, 'text-opacity', 0.7)
-          // Neighbourhood names only once the map is close enough for them to be useful.
-          if (/(other|village|suburb)$/.test(layer.id)) map.setLayerZoomRange(layer.id, 13, 24)
-        }
       }
       if (!map.getSource('mrt-lines')) map.addSource('mrt-lines', { type: 'geojson', data: lineFeatures() })
       if (!map.getSource('mrt-stations')) {
@@ -249,7 +244,7 @@ export default function MapView(props: MapViewProps) {
       applyState()
       // Deep links arrive before the map is ready; jump straight to the selection on first load.
       if (firstLoad && current.selected && !current.travelMinutes) {
-        map.jumpTo({ center: [current.selected.lng, current.selected.lat], zoom: 14.5, padding: paddingFor(current.insets) })
+        map.jumpTo({ center: mapPosition(current.selected), zoom: 14.5, padding: paddingFor(current.insets) })
       }
       if (firstLoad) {
         // Start with the attribution collapsed to its (i) button; it expands on tap.
@@ -351,7 +346,7 @@ export default function MapView(props: MapViewProps) {
     const element = document.createElement('div')
     element.className = 'station-pin'
     element.style.setProperty('--pin-color', primaryLine(selected).color)
-    pinRef.current = new maplibregl.Marker({ element }).setLngLat([selected.lng, selected.lat]).addTo(map)
+    pinRef.current = new maplibregl.Marker({ element }).setLngLat(mapPosition(selected)).addTo(map)
   }, [selected])
 
   // Camera: one effect decides what to frame, and re-frames it whenever the sheet changes the padding.
@@ -368,15 +363,15 @@ export default function MapView(props: MapViewProps) {
       map.fitBounds(NETWORK_BOUNDS, { padding, duration: 700 })
     } else if (selected) {
       map.easeTo({
-        center: [selected.lng, selected.lat],
+        center: mapPosition(selected),
         zoom: targetChanged ? Math.max(map.getZoom(), 14.5) : map.getZoom(),
         padding,
         duration: 650
       })
     } else if (focusLine) {
       const members = stations.filter(station => station.codes.some(code => focusLine.stations.includes(code)))
-      const lngs = members.map(station => station.lng)
-      const lats = members.map(station => station.lat)
+      const lngs = members.map(station => mapPosition(station)[0])
+      const lats = members.map(station => mapPosition(station)[1])
       map.fitBounds(
         [
           [Math.min(...lngs), Math.min(...lats)],
