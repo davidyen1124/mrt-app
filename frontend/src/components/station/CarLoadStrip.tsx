@@ -8,11 +8,14 @@ export default function CarLoadStrip({ load }: { load: CarLoad }) {
   const { t, lang } = useStrings()
   const levelIndex = (level: number) => Math.min(3, Math.max(0, level - 1))
   const best = load.bestCars.join(lang === 'zh' ? '、' : ', ')
+  // When every car reports the same level there is nothing to recommend.
+  const even = load.carLoads.every(level => level === load.carLoads[0])
+  const label = even ? t.carLoadEven(t.carLoadLevels[levelIndex(load.carLoads[0])]) : t.carLoadBest(best)
   return (
     <div className="mt-2 flex items-center gap-3" aria-label={t.carLoad}>
       <div className="flex items-end gap-[3px]">
         {load.carLoads.map((level, index) => {
-          const isBest = load.bestCars.includes(index + 1)
+          const isBest = !even && load.bestCars.includes(index + 1)
           return (
             <span key={index} className="flex flex-col items-center gap-[3px]">
               <span
@@ -25,7 +28,7 @@ export default function CarLoadStrip({ load }: { load: CarLoad }) {
           )
         })}
       </div>
-      <span className="text-[11.5px] leading-tight font-semibold text-board-ink/85">{t.carLoadBest(best)}</span>
+      <span className="text-[11.5px] leading-tight font-semibold text-board-ink/85">{label}</span>
     </div>
   )
 }
